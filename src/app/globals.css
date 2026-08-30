@@ -1,26 +1,1691 @@
 @import "tailwindcss";
 
+/*
+  MADE IN AFREEKA art system:
+  Imigongo geometry + hand-painted denim streetwear.
+  Indigo twill, cream plaster, crimson pigment, and wet paint accents.
+*/
+@theme {
+  --color-coal: #1a1410;
+  --color-coal-soft: #efe6d6;
+  --color-ash: #e4d9c8;
+  --color-ash-line: #d0c2ae;
+  --color-bone: #f7f1e8;
+  --color-bone-dim: #6b5e52;
+  --color-rust: #e30613;
+  --color-sand: #c45c26;
+  --color-sage: #4f6b4a;
+  --color-indigo: #1e3a5f;
+  --color-indigo-soft: #2f5a8a;
+  --color-paint-yellow: #e8b82e;
+  --color-paint-green: #2f6b3a;
+  --color-paint-orange: #c45c26;
+
+  --font-display: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-nav: var(--font-nav), ui-sans-serif, system-ui, sans-serif;
+  --font-brand: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+}
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  color-scheme: light;
+  --imigongo: url("/patterns/imigongo.png");
+  --imigongo-tile: url("/patterns/imigongo-tile.svg");
+  --imigongo-top: url("/patterns/imigongo-top.jpg");
+  --denim: url("/textures/denim.png");
+  --denim-paint: url("/textures/denim-paint.png");
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/*
+  Fluid root type · smaller on phones, steps up with screen width.
+  All rem-based Tailwind text scales with this.
+*/
+html {
+  font-size: clamp(0.8125rem, 0.7rem + 0.55vw, 1rem);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bone);
+  color: var(--color-coal);
+  font-family: var(--font-sans);
+  font-size: 0.9375rem;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+@media (min-width: 640px) {
+  body {
+    font-size: 1rem;
+    line-height: 1.6;
+  }
+}
+
+/* Soft paper grain on top of everything decorative. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  pointer-events: none;
+  opacity: 0.035;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------------------------------------------------------------- atmosphere */
+
+.imigongo-atmosphere {
+  pointer-events: none;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+.imigongo-wash {
+  position: absolute;
+  inset: -20%;
+  opacity: 0.055;
+  background-image: var(--imigongo);
+  background-size: 420px auto;
+  background-repeat: repeat;
+  transform: rotate(-11deg) scale(1.15);
+  animation: imigongo-drift 72s linear infinite;
+  mix-blend-mode: multiply;
+}
+
+.imigongo-wash--accent {
+  opacity: 0.04;
+  transform: rotate(7deg) scale(1.2);
+  animation-direction: reverse;
+  animation-duration: 96s;
+  filter: brightness(0) saturate(100%) invert(14%) sepia(84%) saturate(3200%)
+    hue-rotate(352deg) brightness(0.85);
+  mix-blend-mode: multiply;
+}
+
+/* Soft denim twill wash under the Imigongo · streetwear grain. */
+.denim-wash {
+  position: absolute;
+  inset: 0;
+  opacity: 0.07;
+  background-image: var(--denim);
+  background-size: 480px 480px;
+  background-repeat: repeat;
+  mix-blend-mode: multiply;
+  filter: contrast(1.1) saturate(0.85);
+}
+
+@media (max-width: 1023px) {
+  .denim-wash {
+    display: none;
+  }
+
+  .imigongo-wash {
+    opacity: 0.03;
+    animation: none;
+    background-size: 320px auto;
+  }
+
+  .imigongo-wash--accent {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imigongo-wash {
+    animation: none;
+  }
+}
+
+@keyframes imigongo-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 420px 280px;
+  }
+}
+
+/* ---------------------------------------------------------------- denim art */
+
+.denim-plate {
+  position: relative;
+  background-color: var(--color-indigo);
+  background-image: var(--denim);
+  background-size: cover;
+  background-position: center;
+  color: var(--color-bone);
+  isolation: isolate;
+}
+
+.denim-plate::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    160deg,
+    rgba(30, 58, 95, 0.55),
+    rgba(26, 20, 16, 0.72)
+  );
+  z-index: 0;
+}
+
+.denim-plate > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Hand-painted jeans panel · the signature art object. */
+.paint-denim-frame {
+  position: relative;
+  overflow: hidden;
+  border: 3px solid var(--color-coal);
+  box-shadow:
+    8px 8px 0 var(--color-paint-yellow),
+    16px 16px 0 var(--color-rust);
+  background: var(--color-indigo);
+}
+
+.paint-splat {
+  pointer-events: none;
+  position: absolute;
+  z-index: 3;
+  width: clamp(120px, 22vw, 240px);
+  height: auto;
+  opacity: 0.92;
+  mix-blend-mode: multiply;
+  filter: contrast(1.05);
+}
+
+.paint-splat--tl {
+  top: -8%;
+  left: -4%;
+  transform: rotate(-18deg);
+}
+
+.paint-splat--br {
+  right: -6%;
+  bottom: -10%;
+  transform: rotate(12deg) scaleX(-1);
+}
+
+/* Wet paint drip accents (CSS, not image-dependent). */
+.paint-drips {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow: hidden;
+}
+
+.paint-drips span {
+  position: absolute;
+  top: -12px;
+  width: 10px;
+  border-radius: 999px;
+  animation: drip 5.5s ease-in-out infinite;
+}
+
+.paint-drips span:nth-child(1) {
+  left: 12%;
+  height: 64px;
+  background: var(--color-paint-yellow);
+  animation-delay: 0s;
+}
+.paint-drips span:nth-child(2) {
+  left: 28%;
+  width: 7px;
+  height: 92px;
+  background: var(--color-paint-green);
+  animation-delay: 0.8s;
+}
+.paint-drips span:nth-child(3) {
+  left: 61%;
+  height: 48px;
+  background: var(--color-paint-orange);
+  animation-delay: 1.4s;
+}
+.paint-drips span:nth-child(4) {
+  left: 78%;
+  width: 8px;
+  height: 76px;
+  background: var(--color-paint-yellow);
+  animation-delay: 2.1s;
+}
+.paint-drips span:nth-child(5) {
+  left: 91%;
+  height: 54px;
+  background: var(--color-rust);
+  animation-delay: 0.4s;
+}
+
+@keyframes drip {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: translateY(10px) scaleY(1.08);
+    opacity: 1;
+  }
+}
+
+/* Product / UI frames that feel cut from jeans. */
+.denim-frame {
+  border: 2px solid var(--color-coal);
+  box-shadow: 5px 5px 0 var(--color-indigo);
+  background-image: var(--denim);
+  background-size: 220px;
+  background-blend-mode: soft-light;
+  background-color: var(--color-bone);
+}
+
+/* ---------------------------------------------------------------- belts */
+
+.imigongo-belt {
+  position: relative;
+  z-index: 1;
+  background-color: var(--color-bone);
+  background-image: var(--imigongo-tile);
+  background-repeat: repeat-x;
+  background-position: center;
+  background-size: 120px 100%;
+  border-color: var(--color-coal);
+  border-style: solid;
+  border-width: 2px 0;
+  color: var(--color-coal);
+}
+
+.imigongo-belt--ink {
+  background-color: var(--color-bone);
+  color: var(--color-coal);
+}
+
+.imigongo-belt--cream {
+  background-color: var(--color-coal);
+  background-image: none;
+  border-color: var(--color-rust);
+}
+
+.imigongo-belt--cream::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-bone);
+  -webkit-mask-image: var(--imigongo-tile);
+  mask-image: var(--imigongo-tile);
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-size: 120px 100%;
+  mask-size: 120px 100%;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.imigongo-belt--rust {
+  background-color: var(--color-rust);
+  background-image: none;
+  border-color: var(--color-coal);
+}
+
+.imigongo-belt--rust::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-bone);
+  -webkit-mask-image: var(--imigongo-tile);
+  mask-image: var(--imigongo-tile);
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-size: 120px 100%;
+  mask-size: 120px 100%;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.imigongo-belt--indigo {
+  background-color: var(--color-indigo);
+  background-image: none;
+  border-color: var(--color-paint-yellow);
+}
+
+.imigongo-belt--indigo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: var(--color-paint-yellow);
+  -webkit-mask-image: var(--imigongo-tile);
+  mask-image: var(--imigongo-tile);
+  -webkit-mask-repeat: repeat-x;
+  mask-repeat: repeat-x;
+  -webkit-mask-size: 120px 100%;
+  mask-size: 120px 100%;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+.imigongo-band {
+  background-color: var(--color-bone);
+  background-image: var(--imigongo-tile);
+  background-size: 96px 100%;
+  background-repeat: repeat-x;
+  background-position: center;
+  border-bottom: 2px solid var(--color-coal);
+  height: 1.35rem;
+}
+
+/* Campaign Imigongo strip · sits at the top of the shop */
+.imigongo-top {
+  width: 100%;
+  height: clamp(1.75rem, 3.5vw, 2.75rem);
+  background-color: var(--color-bone);
+  background-image: var(--imigongo-top);
+  background-repeat: repeat-x;
+  background-position: center bottom;
+  background-size: auto 100%;
+  border-bottom: 2px solid var(--color-coal);
+}
+
+.imigongo-frame {
+  border: 2px solid var(--color-coal);
+  box-shadow:
+    inset 0 0 0 1px var(--color-bone),
+    inset 0 0 0 3px var(--color-rust);
+}
+
+.imigongo-stamp {
+  position: absolute;
+  width: min(42vw, 280px);
+  height: 72px;
+  background-color: var(--color-bone);
+  background-image: var(--imigongo-tile);
+  background-size: 100px 100%;
+  background-repeat: repeat-x;
+  border: 3px solid var(--color-coal);
+  box-shadow: 4px 4px 0 var(--color-paint-yellow);
+  z-index: 2;
+  pointer-events: none;
+}
+
+.imigongo-stamp--tl {
+  top: 1.25rem;
+  left: 1.25rem;
+}
+
+.imigongo-stamp--br {
+  right: 1.25rem;
+  bottom: 1.25rem;
+  transform: scaleX(-1);
+}
+
+@media (max-width: 640px) {
+  .imigongo-stamp {
+    width: 44vw;
+    height: 48px;
+  }
+
+  .imigongo-stamp--tl {
+    top: 0.75rem;
+    left: 0.75rem;
+  }
+
+  .imigongo-stamp--br {
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+}
+
+::selection {
+  background-color: var(--color-paint-yellow);
+  color: var(--color-coal);
+}
+
+:focus-visible {
+  outline: 2px dashed var(--color-indigo);
+  outline-offset: 3px;
+}
+
+.price-tag {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: 0.01em;
+}
+
+.price-tag-was {
+  font-variant-numeric: tabular-nums;
+  opacity: 0.75;
+}
+
+.font-display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 700;
+}
+
+/* Brand lockup · casual rounded, neat */
+.font-brand {
+  font-family: var(--font-brand);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1.05;
+}
+
+/* Navbar labels · hand-drawn marker (KAPOW) */
+.font-nav {
+  font-family: var(--font-nav);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+  line-height: 1;
+}
+
+.eyebrow {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--color-rust);
+}
+
+@media (min-width: 640px) {
+  .eyebrow {
+    font-size: 0.6875rem;
+    letter-spacing: 0.24em;
+  }
+}
+
+/* Compact display headings on small screens site-wide */
+@media (max-width: 639px) {
+  .font-display.text-7xl {
+    font-size: 2.35rem !important;
+    line-height: 1.05 !important;
+  }
+
+  .font-display.text-6xl,
+  .font-display.text-5xl {
+    font-size: 2rem !important;
+    line-height: 1.08 !important;
+  }
+
+  .font-display.text-4xl {
+    font-size: 1.55rem !important;
+    line-height: 1.12 !important;
+  }
+
+  .font-display.text-3xl {
+    font-size: 1.3rem !important;
+    line-height: 1.15 !important;
+  }
+
+  .font-display.text-2xl {
+    font-size: 1.15rem !important;
+    line-height: 1.2 !important;
+  }
+
+  .font-display.text-xl {
+    font-size: 1.05rem !important;
+    line-height: 1.25 !important;
+  }
+}
+
+.eyebrow-paint {
+  color: var(--color-paint-yellow);
+}
+
+.field-input {
+  display: block;
+  width: 100%;
+  border: none;
+  background: var(--color-bone);
+  padding: 0.85rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.4;
+  color: var(--color-coal);
+  outline: none;
+  clip-path: var(--craft-clip-soft);
+  box-shadow: inset 0 0 0 2px var(--color-coal);
+  transition: box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.field-input::placeholder {
+  color: color-mix(in srgb, var(--color-bone-dim) 55%, transparent);
+}
+
+.field-input:focus {
+  box-shadow: inset 0 0 0 2px var(--color-rust);
+  filter: none;
+}
+
+.password-field {
+  position: relative;
+}
+
+.password-field__input {
+  padding-right: 2.85rem;
+}
+
+.password-field__toggle {
+  position: absolute;
+  top: 50%;
+  right: 0.55rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--color-bone-dim);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.password-field__toggle:hover,
+.password-field__toggle:focus-visible {
+  color: var(--color-rust);
+}
+
+.password-field__toggle:focus-visible {
+  outline: 2px dashed var(--color-indigo);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------- craft edges
+   Hand-cut / Imigongo-inspired silhouettes · no straight rectangles.
+*/
+
+:root {
+  /* Soft irregular frame (cards, panels, images) */
+  --craft-clip: polygon(
+    0% 2.5%,
+    2% 0%,
+    7% 1.5%,
+    14% 0%,
+    22% 1.8%,
+    31% 0.2%,
+    42% 1.5%,
+    50% 0%,
+    58% 1.6%,
+    68% 0.2%,
+    77% 1.5%,
+    86% 0%,
+    93% 1.8%,
+    98% 0%,
+    100% 3%,
+    98.5% 10%,
+    100% 18%,
+    98.2% 28%,
+    100% 38%,
+    98.5% 48%,
+    100% 58%,
+    98.2% 68%,
+    100% 78%,
+    98.5% 88%,
+    100% 96%,
+    97% 100%,
+    90% 98%,
+    82% 100%,
+    72% 98.2%,
+    62% 100%,
+    52% 98%,
+    42% 100%,
+    32% 98.2%,
+    22% 100%,
+    12% 98%,
+    4% 100%,
+    0% 96%,
+    1.5% 88%,
+    0% 78%,
+    1.8% 68%,
+    0% 58%,
+    1.5% 48%,
+    0% 38%,
+    1.8% 28%,
+    0% 18%,
+    1.5% 8%
+  );
+
+  --craft-clip-soft: polygon(
+    0% 1.5%,
+    4% 0%,
+    18% 1%,
+    35% 0%,
+    50% 1.2%,
+    65% 0%,
+    82% 1%,
+    96% 0%,
+    100% 2%,
+    99% 20%,
+    100% 40%,
+    98.5% 60%,
+    100% 80%,
+    99% 95%,
+    96% 100%,
+    80% 98.5%,
+    60% 100%,
+    40% 98.5%,
+    20% 100%,
+    4% 98.5%,
+    0% 96%,
+    1% 80%,
+    0% 60%,
+    1.5% 40%,
+    0% 20%
+  );
+
+}
+
+.craft-frame {
+  border: none !important;
+  border-radius: 0 !important;
+  clip-path: var(--craft-clip);
+  /* Hard filter shadows on clipped frames · keep on images only (no text inside) */
+  filter: drop-shadow(4px 5px 0 var(--color-indigo));
+  transition: filter 0.3s ease;
+}
+
+.craft-frame:hover,
+.group:hover .craft-frame {
+  filter: drop-shadow(6px 7px 0 var(--color-paint-yellow));
+}
+
+.craft-frame--soft {
+  clip-path: var(--craft-clip-soft);
+  filter: drop-shadow(3px 4px 0 var(--color-coal));
+}
+
+.craft-frame--indigo {
+  filter: drop-shadow(6px 7px 0 var(--color-indigo));
+}
+
+/* Panels hold text · never use filter:drop-shadow here (ghosts / doubles glyphs). */
+.craft-panel {
+  border: none !important;
+  border-radius: 0 !important;
+  clip-path: var(--craft-clip-soft);
+  box-shadow: none;
+  filter: none;
+}
+
+/* Purpose tiles · light lift only, no filter ghosting */
+.path-tile {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.2s ease;
+}
+
+.path-tile:hover {
+  transform: translateY(-3px);
+  filter: none;
+}
+
+.path-tile:active {
+  transform: translateY(-1px);
+}
+
+/* Mobile thumb bar · reach Shop / Events / Brands / Bag fast */
+.mobile-quick-nav {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 55;
+  border-top: 2px solid var(--color-coal);
+  background: color-mix(in srgb, var(--color-bone) 94%, transparent);
+  backdrop-filter: blur(10px);
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  box-shadow: 0 -8px 24px color-mix(in srgb, var(--color-coal) 12%, transparent);
+}
+
+/*
+  Stamp buttons · hard offset shadow + paint edge, no zig-zag clip.
+  Reads as a workshop stamp / pressed label, not serrated tape.
+*/
+.craft-btn {
+  position: relative;
+  border: none !important;
+  border-radius: 0 !important;
+  clip-path: none;
+  filter: none;
+  background-image: linear-gradient(
+    118deg,
+    transparent 42%,
+    color-mix(in srgb, var(--color-bone) 26%, transparent) 50%,
+    transparent 58%
+  );
+  background-size: 220% 100%;
+  background-position: 120% 0;
+  background-repeat: no-repeat;
+  box-shadow:
+    inset 3px 0 0 0 var(--color-paint-yellow),
+    4px 4px 0 0 var(--color-coal);
+  transition:
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    background-color 0.15s ease,
+    background-position 0.45s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.15s ease;
+}
+
+.craft-btn:hover {
+  filter: none;
+  transform: translate(-2px, -2px);
+  background-position: -20% 0;
+  box-shadow:
+    inset 3px 0 0 0 var(--color-paint-yellow),
+    6px 6px 0 0 var(--color-paint-yellow);
+  animation: none;
+}
+
+.craft-btn:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow:
+    inset 3px 0 0 0 var(--color-paint-yellow),
+    1px 1px 0 0 var(--color-coal);
+}
+
+.craft-btn:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 3px;
+}
+
+.craft-btn:disabled {
+  transform: none;
+  background-image: none;
+  box-shadow:
+    inset 3px 0 0 0 color-mix(in srgb, var(--color-paint-yellow) 45%, transparent),
+    2px 2px 0 0 color-mix(in srgb, var(--color-coal) 35%, transparent);
+}
+
+.craft-btn-ghost {
+  position: relative;
+  border: none !important;
+  border-radius: 0 !important;
+  clip-path: none;
+  filter: none;
+  box-shadow:
+    inset 0 0 0 2px var(--color-coal),
+    inset 3px 0 0 0 var(--color-rust),
+    3px 3px 0 0 color-mix(in srgb, var(--color-coal) 16%, transparent);
+  transition:
+    box-shadow 0.22s cubic-bezier(0.22, 1, 0.36, 1),
+    color 0.15s ease,
+    background-color 0.15s ease,
+    transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.craft-btn-ghost:hover {
+  box-shadow:
+    inset 0 0 0 2px var(--color-rust),
+    inset 3px 0 0 0 var(--color-rust),
+    5px 5px 0 0 color-mix(in srgb, var(--color-rust) 22%, transparent);
+  filter: none;
+  transform: translate(-2px, -2px);
+  animation: none;
+}
+
+.craft-btn-ghost:active:not(:disabled) {
+  transform: translate(1px, 1px);
+  box-shadow:
+    inset 0 0 0 2px var(--color-rust),
+    inset 3px 0 0 0 var(--color-rust),
+    1px 1px 0 0 color-mix(in srgb, var(--color-rust) 18%, transparent);
+}
+
+.craft-btn-ghost:focus-visible {
+  outline: 2px solid var(--color-indigo);
+  outline-offset: 3px;
+}
+
+.craft-btn-ghost--paint {
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--color-paint-yellow) 75%, transparent),
+    inset 3px 0 0 0 var(--color-paint-yellow),
+    3px 3px 0 0 color-mix(in srgb, var(--color-paint-yellow) 28%, transparent);
+}
+
+.craft-btn-ghost--paint:hover {
+  box-shadow:
+    inset 0 0 0 2px var(--color-paint-yellow),
+    inset 3px 0 0 0 var(--color-paint-yellow),
+    5px 5px 0 0 color-mix(in srgb, var(--color-paint-yellow) 35%, transparent);
+  filter: none;
+  color: var(--color-paint-yellow);
+}
+
+.craft-chip {
+  border: none !important;
+  border-radius: 0 !important;
+  clip-path: none;
+  box-shadow: inset 0 0 0 1.5px var(--color-ash-line);
+  transition:
+    transform 0.2s ease,
+    background-color 0.15s ease,
+    color 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.craft-chip:hover {
+  animation: none;
+  transform: translateY(-1px);
+  box-shadow: inset 0 0 0 1.5px var(--color-coal);
+}
+
+.craft-chip--idle {
+  box-shadow: inset 0 0 0 1.5px var(--color-ash-line);
+}
+
+.craft-chip--active {
+  background: var(--color-coal);
+  color: var(--color-bone);
+  box-shadow: 2px 2px 0 0 var(--color-rust);
+}
+
+/* ---------------------------------------------------------------- African culture motion */
+
+@keyframes culture-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes culture-mask-reveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.72) rotate(-8deg);
+  }
+  55% {
+    opacity: 1;
+    transform: scale(1.04) rotate(2deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes culture-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-0.6deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(0.8deg);
+  }
+}
+
+@keyframes culture-drum-tap {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(0.94) rotate(-1deg);
+  }
+  60% {
+    transform: scale(1.05) rotate(1deg);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes culture-bead-spin {
+  0% {
+    transform: scale(1) rotate(0deg);
+  }
+  40% {
+    transform: scale(1.12) rotate(-6deg);
+  }
+  70% {
+    transform: scale(1.06) rotate(4deg);
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+  }
+}
+
+@keyframes culture-imigongo-pulse {
+  0%,
+  100% {
+    filter: drop-shadow(4px 5px 0 var(--color-indigo));
+  }
+  50% {
+    filter: drop-shadow(7px 9px 0 var(--color-rust))
+      drop-shadow(-3px 4px 0 var(--color-paint-yellow));
+  }
+}
+
+@keyframes culture-weave {
+  0%,
+  100% {
+    background-position: 0% 50%;
+    opacity: 0.35;
+  }
+  50% {
+    background-position: 100% 50%;
+    opacity: 0.7;
+  }
+}
+
+@keyframes culture-horn-sway {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+@keyframes culture-fire-circle {
+  0% {
+    box-shadow:
+      0 0 0 0 color-mix(in srgb, var(--color-rust) 45%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--color-paint-yellow) 30%, transparent);
+  }
+  70% {
+    box-shadow:
+      0 0 0 14px transparent,
+      0 0 0 28px transparent;
+  }
+  100% {
+    box-shadow:
+      0 0 0 0 transparent,
+      0 0 0 0 transparent;
+  }
+}
+
+@keyframes culture-modal-in {
+  0% {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes culture-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes culture-link-slide {
+  from {
+    opacity: 0;
+    transform: translateX(-18px) skewX(-4deg);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) skewX(0);
+  }
+}
+
+@keyframes culture-spark {
+  0%,
+  100% {
+    opacity: 0;
+    transform: scale(0.4) translateY(6px);
+  }
+  40% {
+    opacity: 1;
+    transform: scale(1.2) translateY(-4px);
+  }
+  70% {
+    opacity: 0.6;
+    transform: scale(0.9) translateY(-10px);
+  }
+}
+
+.culture-rise {
+  animation: culture-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.culture-stagger > *:nth-child(1) {
+  animation-delay: 0.04s;
+}
+.culture-stagger > *:nth-child(2) {
+  animation-delay: 0.1s;
+}
+.culture-stagger > *:nth-child(3) {
+  animation-delay: 0.16s;
+}
+.culture-stagger > *:nth-child(4) {
+  animation-delay: 0.22s;
+}
+.culture-stagger > *:nth-child(5) {
+  animation-delay: 0.28s;
+}
+.culture-stagger > *:nth-child(6) {
+  animation-delay: 0.34s;
+}
+.culture-stagger > *:nth-child(7) {
+  animation-delay: 0.4s;
+}
+.culture-stagger > *:nth-child(8) {
+  animation-delay: 0.46s;
+}
+.culture-stagger > *:nth-child(9) {
+  animation-delay: 0.52s;
+}
+.culture-stagger > *:nth-child(10) {
+  animation-delay: 0.58s;
+}
+.culture-stagger > *:nth-child(11) {
+  animation-delay: 0.64s;
+}
+.culture-stagger > *:nth-child(12) {
+  animation-delay: 0.7s;
+}
+
+.culture-card {
+  animation: culture-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition: transform 0.35s ease;
+}
+
+.culture-card:hover {
+  transform: translateY(-6px);
+}
+
+.culture-card .craft-frame {
+  animation: culture-mask-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.culture-card.craft-frame {
+  animation:
+    culture-rise 0.8s cubic-bezier(0.22, 1, 0.36, 1) both,
+    culture-mask-reveal 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.culture-card:hover .craft-frame {
+  animation: none;
+}
+
+.culture-card.craft-frame:hover {
+  animation: none;
+}
+
+.culture-card__weave {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  opacity: 0;
+  background-image: var(--imigongo-tile);
+  background-size: 48px 100%;
+  mix-blend-mode: multiply;
+  transition: opacity 0.3s ease;
+}
+
+.culture-card:hover .culture-card__weave {
+  opacity: 0.45;
+  animation: culture-weave 1.8s linear infinite;
+}
+
+.culture-card__spark {
+  pointer-events: none;
+  position: absolute;
+  top: 12%;
+  right: 10%;
+  z-index: 3;
+  width: 0.55rem;
+  height: 0.55rem;
+  background: var(--color-paint-yellow);
+  clip-path: polygon(
+    50% 0%,
+    65% 35%,
+    100% 50%,
+    65% 65%,
+    50% 100%,
+    35% 65%,
+    0% 50%,
+    35% 35%
+  );
+  opacity: 0;
+}
+
+.culture-card:hover .culture-card__spark {
+  animation: culture-spark 1.1s ease-in-out infinite;
+}
+
+.culture-card__spark--b {
+  top: auto;
+  right: auto;
+  bottom: 18%;
+  left: 12%;
+  background: var(--color-rust);
+  animation-delay: 0.35s;
+}
+
+.menu-popup-card {
+  animation: culture-modal-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  filter: drop-shadow(0 18px 40px rgba(26, 20, 16, 0.35))
+    drop-shadow(6px 8px 0 var(--color-rust));
+}
+
+.menu-popup-backdrop {
+  animation: culture-backdrop-in 0.35s ease both;
+}
+
+.gallery-lightbox__backdrop {
+  animation: culture-backdrop-in 0.35s ease both;
+}
+
+.gallery-lightbox__stage {
+  animation: culture-modal-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  filter: drop-shadow(0 22px 48px rgba(0, 0, 0, 0.45))
+    drop-shadow(5px 7px 0 color-mix(in srgb, var(--color-rust) 70%, transparent));
+}
+
+.menu-popup-card .craft-panel {
+  animation: none;
+}
+
+.culture-menu-link {
+  animation: culture-link-slide 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transition:
+    transform 0.2s ease,
+    background-color 0.2s ease,
+    padding-left 0.2s ease;
+}
+
+.culture-menu-link:hover {
+  transform: translateX(6px);
+  padding-left: 0.35rem;
+  background: color-mix(in srgb, var(--color-rust) 8%, transparent);
+}
+
+.culture-menu-link:hover .culture-menu-icon {
+  animation: culture-bead-spin 0.65s ease;
+}
+
+.culture-fire {
+  animation: culture-fire-circle 2.4s ease-out infinite;
+}
+
+.culture-float-idle {
+  animation: culture-float 4.5s ease-in-out infinite;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee 38s linear infinite;
+}
+
+/* ---------------------------------------------------------------- footer heritage art */
+
+.footer-heritage {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-bottom: 2px solid var(--color-coal);
+  min-height: clamp(12rem, 28vw, 18rem);
+  background:
+    linear-gradient(
+      165deg,
+      #f3e8d4 0%,
+      var(--color-bone) 38%,
+      #e8dcc8 72%,
+      #dfe8e2 100%
+    );
+}
+
+.footer-heritage__sky {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 55% at 50% 110%, rgba(227, 6, 19, 0.12), transparent 60%),
+    radial-gradient(ellipse 45% 40% at 12% 20%, rgba(30, 58, 95, 0.1), transparent 55%),
+    radial-gradient(ellipse 40% 35% at 88% 30%, rgba(196, 92, 38, 0.12), transparent 50%);
+  animation: footer-sky-breathe 14s ease-in-out infinite alternate;
+}
+
+.footer-heritage__grain {
+  position: absolute;
+  inset: 0;
+  opacity: 0.12;
+  background-image: var(--denim);
+  background-size: 360px 360px;
+  mix-blend-mode: multiply;
+  animation: footer-grain-drift 48s linear infinite;
+}
+
+.footer-heritage__orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(28px);
+  pointer-events: none;
+}
+
+.footer-heritage__orb--a {
+  width: 10rem;
+  height: 10rem;
+  top: 10%;
+  left: 8%;
+  background: rgba(232, 184, 46, 0.28);
+  animation: footer-orb-drift 18s ease-in-out infinite alternate;
+}
+
+.footer-heritage__orb--b {
+  width: 12rem;
+  height: 12rem;
+  right: 6%;
+  bottom: 5%;
+  background: rgba(47, 107, 58, 0.18);
+  animation: footer-orb-drift 22s ease-in-out infinite alternate-reverse;
+}
+
+.footer-heritage__stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 1fr 1.4fr 1fr;
+  align-items: end;
+  justify-items: center;
+  gap: 0.5rem;
+  min-height: inherit;
+  padding: 1.75rem 1rem 2.75rem;
+}
+
+.footer-heritage__float {
+  will-change: transform;
+}
+
+.footer-heritage__float--agaseke-a {
+  justify-self: end;
+  animation: footer-float-a 7s ease-in-out infinite;
+}
+
+.footer-heritage__float--agaseke-b {
+  position: absolute;
+  left: 18%;
+  top: 18%;
+  animation: footer-float-b 9s ease-in-out infinite;
+  opacity: 0.85;
+}
+
+.footer-heritage__float--cow {
+  grid-column: 2;
+  animation: footer-cow-breathe 8s ease-in-out infinite;
+}
+
+.footer-heritage__float--agaseke-c {
+  justify-self: start;
+  animation: footer-float-c 8.5s ease-in-out infinite;
+}
+
+.footer-agaseke__lid {
+  transform-box: view-box;
+  transform-origin: 60px 48px;
+  animation: footer-lid-sway 6s ease-in-out infinite;
+}
+
+.footer-agaseke__finial {
+  animation: footer-finial-pulse 3.5s ease-in-out infinite;
+}
+
+.footer-agaseke__weave {
+  animation: footer-weave-shimmer 5s ease-in-out infinite;
+}
+
+.footer-cow__horn--left {
+  transform-box: view-box;
+  transform-origin: 118px 78px;
+  animation: footer-horn-left 6.5s ease-in-out infinite;
+}
+
+.footer-cow__horn--right {
+  transform-box: view-box;
+  transform-origin: 198px 78px;
+  animation: footer-horn-right 6.5s ease-in-out infinite;
+}
+
+.footer-cow__shadow {
+  animation: footer-shadow-pulse 8s ease-in-out infinite;
+}
+
+.footer-heritage__caption {
+  position: absolute;
+  z-index: 2;
+  right: 0;
+  bottom: 0.65rem;
+  left: 0;
+  text-align: center;
+  font-size: 0.625rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--color-bone-dim);
+}
+
+@keyframes footer-sky-breathe {
+  from {
+    opacity: 0.85;
+    transform: scale(1);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+
+@keyframes footer-grain-drift {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: 360px 180px;
+  }
+}
+
+@keyframes footer-orb-drift {
+  from {
+    transform: translate(0, 0) scale(1);
+  }
+  to {
+    transform: translate(18px, -14px) scale(1.12);
+  }
+}
+
+@keyframes footer-float-a {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(2deg);
+  }
+}
+
+@keyframes footer-float-b {
+  0%,
+  100% {
+    transform: translateY(0) rotate(4deg) scale(1);
+  }
+  50% {
+    transform: translateY(-18px) rotate(-3deg) scale(1.05);
+  }
+}
+
+@keyframes footer-float-c {
+  0%,
+  100% {
+    transform: translateY(0) rotate(1deg);
+  }
+  50% {
+    transform: translateY(-10px) rotate(-3deg);
+  }
+}
+
+@keyframes footer-cow-breathe {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-6px) scale(1.015);
+  }
+}
+
+@keyframes footer-lid-sway {
+  0%,
+  100% {
+    transform: rotate(-1.5deg);
+  }
+  50% {
+    transform: rotate(1.5deg);
+  }
+}
+
+@keyframes footer-finial-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@keyframes footer-weave-shimmer {
+  0%,
+  100% {
+    opacity: 0.55;
+  }
+  50% {
+    opacity: 0.9;
+  }
+}
+
+@keyframes footer-horn-left {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(-3.5deg);
+  }
+}
+
+@keyframes footer-horn-right {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  50% {
+    transform: rotate(3.5deg);
+  }
+}
+
+@keyframes footer-shadow-pulse {
+  0%,
+  100% {
+    opacity: 0.08;
+    transform: scaleX(1);
+  }
+  50% {
+    opacity: 0.12;
+    transform: scaleX(1.06);
+  }
+}
+
+@media (max-width: 640px) {
+  .footer-heritage__float--agaseke-b {
+    display: none;
+  }
+
+  .footer-heritage__stage {
+    grid-template-columns: 1fr 1.6fr 1fr;
+    padding-inline: 0.5rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .imigongo-wash,
+  .paint-drips span,
+  .footer-heritage__sky,
+  .footer-heritage__grain,
+  .footer-heritage__orb,
+  .footer-heritage__float,
+  .footer-agaseke__lid,
+  .footer-agaseke__finial,
+  .footer-agaseke__weave,
+  .footer-cow__horn--left,
+  .footer-cow__horn--right,
+  .footer-cow__shadow,
+  .menu-popup-card,
+  .menu-popup-backdrop,
+  .gallery-lightbox__backdrop,
+  .gallery-lightbox__stage,
+  .culture-card,
+  .culture-card .craft-frame,
+  .culture-card:hover .craft-frame,
+  .culture-card:hover .culture-card__weave,
+  .culture-card:hover .culture-card__spark,
+  .culture-rise,
+  .culture-menu-link,
+  .culture-fire,
+  .culture-float-idle,
+  .craft-btn:hover,
+  .craft-btn-ghost:hover,
+  .path-tile,
+  .path-tile:hover,
+  .mobile-quick-nav,
+  .craft-btn-ghost:hover,
+  .craft-chip:hover,
+  .menu-popup-card .craft-panel {
+    animation: none !important;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------------------------------------------------------- brand portal (Finexy-style) */
+
+.portal-app {
+  --portal-bg: #f5f6f8;
+  --portal-card: #ffffff;
+  --portal-accent: #ff5c35;
+  --portal-ink: #111111;
+  --portal-muted: #6b7280;
+  --portal-line: rgba(17, 17, 17, 0.06);
+  --portal-shadow: 0 8px 30px rgba(17, 17, 17, 0.04);
+  color-scheme: light;
+}
+
+.portal-card {
+  background: var(--portal-card);
+  border-radius: 1.25rem;
+  box-shadow: var(--portal-shadow);
+  border: 1px solid var(--portal-line);
+}
+
+.portal-input {
+  width: 100%;
+  border-radius: 0.9rem;
+  border: 1px solid var(--portal-line);
+  background: var(--portal-bg);
+  padding: 0.75rem 0.95rem;
+  font-size: 0.875rem;
+  color: var(--portal-ink);
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.portal-input:focus {
+  border-color: color-mix(in srgb, var(--portal-accent) 55%, white);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--portal-accent) 18%, transparent);
+}
+
+.portal-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.7rem 1.25rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+.portal-btn--ink {
+  background: var(--portal-ink);
+  color: white;
+}
+
+.portal-btn--ink:hover {
+  background: #2a2a2a;
+}
+
+.portal-btn--accent {
+  background: var(--portal-accent);
+  color: white;
+}
+
+.portal-btn--accent:hover {
+  filter: brightness(0.96);
+}
+
+.portal-btn--primary {
+  background: var(--portal-accent);
+  color: white;
+}
+
+.portal-btn--primary:hover {
+  filter: brightness(0.96);
+}
+
+.portal-btn--ghost {
+  background: white;
+  color: var(--portal-ink);
+  border: 1px solid var(--portal-line);
+}
+
+.portal-btn--ghost:hover {
+  background: var(--portal-bg);
+}
+
+.portal-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  border-radius: 999px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.portal-badge::before {
+  content: "";
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: currentColor;
+}
+
+.portal-badge--ok {
+  background: #ecfdf3;
+  color: #027a48;
+}
+
+.portal-badge--warn {
+  background: #fffaeb;
+  color: #b54708;
+}
+
+.portal-badge--info {
+  background: #eff8ff;
+  color: #175cd3;
+}
+
+.portal-badge--muted {
+  background: #f2f4f7;
+  color: #344054;
 }

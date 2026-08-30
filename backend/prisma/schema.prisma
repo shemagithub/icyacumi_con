@@ -1,0 +1,366 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model Brand {
+  id               String      @id @default(cuid())
+  slug             String      @unique @db.VarChar(120)
+  name             String      @db.VarChar(160)
+  shortBio         String      @db.VarChar(500)
+  location         String      @db.VarChar(120)
+  icon             String      @db.VarChar(40)
+  stripeAccountId  String?     @db.VarChar(120)
+  contactEmail     String?     @db.VarChar(190)
+  contactPhone     String?     @db.VarChar(40)
+  instagram        String?     @db.VarChar(255)
+  tiktok           String?     @db.VarChar(255)
+  facebook         String?     @db.VarChar(255)
+  twitter          String?     @db.VarChar(255)
+  youtube          String?     @db.VarChar(255)
+  website          String?     @db.VarChar(255)
+  payoutProvider   String?     @db.VarChar(40)
+  payoutAccount    String?     @db.VarChar(120)
+  /** pending | approved | rejected · self-signup waits for admin approval. */
+  status           String      @default("pending") @db.VarChar(20)
+  applicationNote  String?     @db.VarChar(1000)
+  approvedAt       DateTime?
+  rejectedReason   String?     @db.VarChar(500)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  users            BrandUser[]
+  products         Product[]
+  events           Event[]
+  ads              Ad[]
+  payouts          Payout[]
+}
+
+model Client {
+  id              String    @id @default(cuid())
+  email           String    @unique @db.VarChar(190)
+  passwordHash    String    @db.VarChar(255)
+  name            String    @db.VarChar(120)
+  phone           String?   @db.VarChar(40)
+  avatarUrl       String?   @db.LongText
+  addressLine1    String?   @db.VarChar(200)
+  addressLine2    String?   @db.VarChar(200)
+  city            String?   @db.VarChar(120)
+  state           String?   @db.VarChar(120)
+  postalCode      String?   @db.VarChar(40)
+  country         String?   @db.VarChar(80)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+model BrandUser {
+  id              String    @id @default(cuid())
+  email           String    @unique @db.VarChar(190)
+  passwordHash    String    @db.VarChar(255)
+  name            String    @db.VarChar(120)
+  role            String    @default("owner") @db.VarChar(40)
+  brandId         String
+  brand           Brand     @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  emailVerifiedAt DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([brandId])
+}
+
+/** One-time codes for email verification and password reset. */
+model EmailCode {
+  id         String    @id @default(cuid())
+  email      String    @db.VarChar(190)
+  codeHash   String    @db.VarChar(255)
+  purpose    String    @db.VarChar(40)
+  account    String    @db.VarChar(40)
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email, purpose])
+}
+
+model SuperAdmin {
+  id           String   @id @default(cuid())
+  email        String   @unique @db.VarChar(190)
+  passwordHash String   @db.VarChar(255)
+  name         String   @db.VarChar(120)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+/** Singleton marketplace settings (id always "default"). */
+model PlatformSettings {
+  id                        String   @id @db.VarChar(40)
+  /** Platform cut on brand product sales, 0–100. */
+  productCommissionPercent  Int      @default(10)
+  /** Optional platform cut on ticket sales, 0–100. */
+  ticketCommissionPercent   Int      @default(5)
+  updatedAt                 DateTime @updatedAt
+  createdAt                 DateTime @default(now())
+}
+
+/**
+ * Singleton public website identity (id always "default").
+ * Logo/company/socials/about — editable in super admin.
+ */
+model SiteSettings {
+  id                 String   @id @db.VarChar(40)
+  companyName        String   @db.VarChar(120)
+  shortName          String   @db.VarChar(40)
+  displayName        String   @db.VarChar(120)
+  tagline            String   @db.VarChar(255)
+  madeIn             String   @db.VarChar(120)
+  email              String   @db.VarChar(255)
+  phone              String?  @db.VarChar(40)
+  /** Public path or data URL for company logo. */
+  logoUrl            String   @db.LongText
+  logoAlt            String   @db.VarChar(255)
+  positioning        String   @db.Text
+  aboutBody          String   @db.LongText
+  aboutHeroImageUrl  String   @db.LongText
+  pillarArtTitle     String   @db.VarChar(80)
+  pillarArtBody      String   @db.Text
+  pillarCraftTitle   String   @db.VarChar(80)
+  pillarCraftBody    String   @db.Text
+  pillarCultureTitle String   @db.VarChar(80)
+  pillarCultureBody  String   @db.Text
+  instagram          String?  @db.VarChar(255)
+  tiktok             String?  @db.VarChar(255)
+  facebook           String?  @db.VarChar(255)
+  twitter            String?  @db.VarChar(255)
+  youtube            String?  @db.VarChar(255)
+  website            String?  @db.VarChar(255)
+  updatedAt          DateTime @updatedAt
+  createdAt          DateTime @default(now())
+}
+
+/** Public legal copy — editable in super admin (ids: terms | privacy). */
+model LegalPage {
+  id        String   @id @db.VarChar(40)
+  title     String   @db.VarChar(200)
+  body      String   @db.LongText
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+}
+
+/** Newsletter / drop-list emails from footer + home subscribe. */
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique @db.VarChar(255)
+  source    String   @default("site") @db.VarChar(40)
+  createdAt DateTime @default(now())
+}
+
+model Product {
+  id             String   @id @default(cuid())
+  slug           String   @unique @db.VarChar(160)
+  brandId        String
+  brand          Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  name           String   @db.VarChar(200)
+  tagline        String   @db.VarChar(255)
+  description    String   @db.Text
+  price          Int
+  compareAtPrice Int?
+  category       String   @db.VarChar(60)
+  collection     String   @db.VarChar(60)
+  colors         Json
+  sizes          Json
+  images         Json
+  fabric         String   @db.VarChar(255) @default("See brand")
+  fit            String   @db.VarChar(255) @default("True to size")
+  details        Json
+  badge          String?  @db.VarChar(60)
+  featured       Boolean  @default(false)
+  inStock        Boolean  @default(true)
+  /** Units available to sell. When 0, product is sold out (inStock=false). */
+  stockQuantity  Int      @default(0)
+  views          Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([brandId])
+  @@index([views])
+  @@index([category])
+}
+
+model Event {
+  id          String   @id @default(cuid())
+  slug        String   @unique @db.VarChar(160)
+  brandId     String
+  brand       Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  title       String   @db.VarChar(200)
+  summary     String   @db.VarChar(500)
+  date        DateTime @db.Date
+  time        String   @db.VarChar(20)
+  venue       String   @db.VarChar(200)
+  city        String   @db.VarChar(120)
+  price       Int
+  capacity    Int
+  ticketsLeft Int
+  imageSrc    String   @db.VarChar(255)
+  imageAlt    String   @db.VarChar(255)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([brandId])
+  @@index([date])
+}
+
+model Ad {
+  id        String   @id @default(cuid())
+  slug      String   @unique @db.VarChar(160)
+  brandId   String
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  title     String   @db.VarChar(200)
+  type      String   @db.VarChar(40)
+  summary   String   @db.VarChar(500)
+  mediaSrc  String   @db.VarChar(255)
+  mediaAlt  String   @db.VarChar(255)
+  mediaUrl  String?  @db.VarChar(500)
+  ctaHref   String   @db.VarChar(255) @default("/shop")
+  ctaLabel  String   @db.VarChar(80) @default("Shop now")
+  featured  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brandId])
+}
+
+model Payout {
+  id        String   @id @default(cuid())
+  brandId   String
+  brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  amount    Int
+  currency  String   @default("RWF") @db.VarChar(10)
+  status    String   @default("pending") @db.VarChar(40)
+  note      String?  @db.VarChar(500)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brandId])
+}
+
+/**
+ * Platform commission withdrawals — money the marketplace keeps from sales.
+ * Separate from brand Payout rows.
+ */
+model PlatformPayout {
+  id          String   @id @default(cuid())
+  amount      Int
+  currency    String   @default("RWF") @db.VarChar(10)
+  /** pending | paid | rejected */
+  status      String   @default("paid") @db.VarChar(40)
+  method      String?  @db.VarChar(40)
+  destination String?  @db.VarChar(120)
+  note        String?  @db.VarChar(500)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+}
+
+/** Cart snapshot someone else can open and pay for. */
+model SharedCart {
+  id            String    @id @default(cuid())
+  token         String    @unique @db.VarChar(40)
+  ownerClientId String?
+  ownerName     String?   @db.VarChar(120)
+  ownerEmail    String?   @db.VarChar(190)
+  message       String?   @db.VarChar(500)
+  lines         Json
+  status        String    @default("open") @db.VarChar(40)
+  expiresAt     DateTime
+  paidOrderId   String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([ownerClientId])
+  @@index([status])
+}
+
+/** Platform promo codes — managed in super admin, applied at checkout. */
+model Coupon {
+  id          String    @id @default(cuid())
+  code        String    @unique @db.VarChar(40)
+  /** percent | fixed | free_shipping */
+  type        String    @db.VarChar(40)
+  /** Percent 1–100, or fixed amount in RWF. Unused for free_shipping. */
+  value       Int       @default(0)
+  minSubtotal Int       @default(0)
+  /** Optional cap when type is percent (RWF). */
+  maxDiscount Int?
+  /** Null = unlimited uses. */
+  maxUses     Int?
+  usesCount   Int       @default(0)
+  startsAt    DateTime?
+  endsAt      DateTime?
+  active      Boolean   @default(true)
+  description String?   @db.VarChar(200)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([active])
+}
+
+model Order {
+  id              String      @id @default(cuid())
+  reference       String      @unique @db.VarChar(40)
+  clientId        String?
+  email           String      @db.VarChar(190)
+  customerName    String      @db.VarChar(120)
+  phone           String?     @db.VarChar(40)
+  shippingAddress String?     @db.Text
+  status          String      @default("paid") @db.VarChar(40)
+  trackingCode    String?     @db.VarChar(80)
+  carrier         String?     @db.VarChar(80)
+  subtotal        Int
+  discount        Int         @default(0)
+  shipping        Int         @default(0)
+  total           Int
+  currency        String      @default("RWF") @db.VarChar(10)
+  couponCode      String?     @db.VarChar(40)
+  couponId        String?
+  /** How the shopper paid: card | mtn | airtel */
+  paymentMethod   String?     @db.VarChar(40)
+  stripeSessionId String?     @unique @db.VarChar(120)
+  sharedCartToken String?     @db.VarChar(40)
+  notes           String?     @db.VarChar(500)
+  paidAt          DateTime?
+  shippedAt       DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  items           OrderItem[]
+
+  @@index([clientId])
+  @@index([email])
+  @@index([status])
+  @@index([couponCode])
+}
+
+model OrderItem {
+  id         String  @id @default(cuid())
+  orderId    String
+  order      Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId  String? @db.VarChar(80)
+  kind       String  @default("product") @db.VarChar(40)
+  name       String  @db.VarChar(200)
+  slug       String  @db.VarChar(160)
+  size       String  @db.VarChar(20)
+  color      String  @db.VarChar(80)
+  quantity   Int
+  unitAmount Int
+  imageSrc   String? @db.VarChar(255)
+  brandId    String? @db.VarChar(80)
+  brandName  String? @db.VarChar(160)
+
+  @@index([orderId])
+}

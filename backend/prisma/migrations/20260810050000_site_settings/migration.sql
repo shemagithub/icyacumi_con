@@ -1,0 +1,31 @@
+-- CreateTable
+CREATE TABLE `SiteSettings` (
+    `id` VARCHAR(40) NOT NULL,
+    `companyName` VARCHAR(120) NOT NULL,
+    `shortName` VARCHAR(40) NOT NULL,
+    `displayName` VARCHAR(120) NOT NULL,
+    `tagline` VARCHAR(255) NOT NULL,
+    `madeIn` VARCHAR(120) NOT NULL,
+    `email` VARCHAR(255) NOT NULL,
+    `logoUrl` LONGTEXT NOT NULL,
+    `logoAlt` VARCHAR(255) NOT NULL,
+    `positioning` TEXT NOT NULL,
+    `aboutBody` LONGTEXT NOT NULL,
+    `aboutHeroImageUrl` VARCHAR(500) NOT NULL,
+    `pillarArtTitle` VARCHAR(80) NOT NULL,
+    `pillarArtBody` TEXT NOT NULL,
+    `pillarCraftTitle` VARCHAR(80) NOT NULL,
+    `pillarCraftBody` TEXT NOT NULL,
+    `pillarCultureTitle` VARCHAR(80) NOT NULL,
+    `pillarCultureBody` TEXT NOT NULL,
+    `instagram` VARCHAR(255) NULL,
+    `tiktok` VARCHAR(255) NULL,
+    `facebook` VARCHAR(255) NULL,
+    `twitter` VARCHAR(255) NULL,
+    `youtube` VARCHAR(255) NULL,
+    `website` VARCHAR(255) NULL,
+    `updatedAt` DATETIME(3) NOT NULL,
+    `createdAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+
+    PRIMARY KEY (`id`)
+) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" width="320" height="80" fill="none">
+  <!-- Authentic Imigongo repeat: solid triangles alternating with parallel chevron ridges -->
+  <!-- Unit 1: downward solid -->
+  <polygon fill="currentColor" points="40,6 70,74 10,74"/>
+  <!-- Unit 2: upward open chevron (two ridges) -->
+  <path fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" d="M80 74 L110 8 L140 74"/>
+  <path fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" d="M92 74 L110 30 L128 74"/>
+  <!-- Unit 3: upward solid -->
+  <polygon fill="currentColor" points="180,74 210,6 240,74"/>
+  <!-- Unit 4: downward open chevron (two ridges) -->
+  <path fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" d="M250 6 L280 72 L310 6"/>
+  <path fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" d="M262 6 L280 50 L298 6"/>
+</svg>

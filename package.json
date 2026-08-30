@@ -1,14 +1,23 @@
 {
-  "name": "bone-koboyi-scaffold",
+  "name": "bone-koboyi",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:all": "concurrently -n web,api -c cyan,magenta \"npm run dev\" \"npm run backend\"",
+    "backend": "npm --prefix backend run dev",
+    "backend:start": "npm --prefix backend run start",
+    "backend:setup": "npm --prefix backend run setup:dev",
+    "backend:seed": "npm --prefix backend run seed",
+    "backend:install": "npm --prefix backend install",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "images": "node scripts/generate-product-images.mjs",
+    "images:real": "node scripts/download-real-images.mjs"
   },
   "dependencies": {
+    "jose": "^6.2.8",
     "next": "16.2.12",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -18,6 +27,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "concurrently": "^9.2.4",
     "eslint": "^9",
     "eslint-config-next": "16.2.12",
     "tailwindcss": "^4",
