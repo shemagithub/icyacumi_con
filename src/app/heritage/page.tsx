@@ -36,7 +36,7 @@ export default function HeritagePage() {
       <div className="relative aspect-[21/9] overflow-hidden border-y-2 border-coal bg-ash">
         <Image
           src="/editorial/look-03.png"
-          alt="BONE KOBOYI look · graphic tee and patterned wrap"
+          alt="ICYACUMI look · graphic tee and patterned wrap"
           fill
           sizes="100vw"
           className="object-cover object-[center_20%]"
@@ -56,7 +56,7 @@ export default function HeritagePage() {
             },
             {
               title: "Where past meets future",
-              body: "Heritage is the spine. Experimentation is the cut. Together they define the BONE KOBOYI silhouette.",
+              body: "Heritage is the spine. Experimentation is the cut. Together they define the ICYACUMI silhouette.",
             },
           ].map((item) => (
             <div key={item.title}>

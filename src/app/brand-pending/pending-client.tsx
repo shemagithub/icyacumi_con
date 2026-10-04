@@ -46,6 +46,10 @@ function PendingContent() {
           </li>
           <li className="flex gap-2">
             <span className="text-paint-green">✓</span>
+            KYC documents submitted
+          </li>
+          <li className="flex gap-2">
+            <span className="text-paint-green">✓</span>
             Email verification
           </li>
           <li className="flex gap-2">

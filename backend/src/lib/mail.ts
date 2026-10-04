@@ -6,7 +6,7 @@ const SMTP_USER = process.env.SMTP_USER ?? "";
 const SMTP_PASS = (process.env.SMTP_PASS ?? "").replace(/\s+/g, "");
 const MAIL_FROM =
   process.env.MAIL_FROM ??
-  (SMTP_USER ? `BONE KOBOYI <${SMTP_USER}>` : "BONE KOBOYI <noreply@bonekoboyi.com>");
+  (SMTP_USER ? `ICYACUMI <${SMTP_USER}>` : "ICYACUMI <noreply@icyacumi.com>");
 export const NOTIFY_EMAIL = process.env.NOTIFY_EMAIL ?? SMTP_USER;
 export const FRONTEND_URL = process.env.FRONTEND_URL ?? "http://localhost:3000";
 
@@ -22,6 +22,7 @@ function getTransporter() {
       port: SMTP_PORT,
       secure: SMTP_PORT === 465,
       auth: { user: SMTP_USER, pass: SMTP_PASS },
+      tls: { servername: SMTP_HOST },
     });
   }
   return transporter;
@@ -93,14 +94,14 @@ function layout(title: string, body: string) {
       <table role="presentation" width="100%" style="max-width:560px;background:#fffdf8;border:1px solid #d0c2ae;border-radius:12px;overflow:hidden;">
         <tr><td style="background:#1a1a1a;padding:20px 28px;">
           <p style="margin:0;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:#e8b82e;">MADE IN AFREEKA</p>
-          <p style="margin:8px 0 0;font-size:22px;letter-spacing:0.08em;color:#fffdf8;">BONE KOBOYI</p>
+          <p style="margin:8px 0 0;font-size:22px;letter-spacing:0.08em;color:#fffdf8;">ICYACUMI</p>
         </td></tr>
         <tr><td style="padding:28px;">
           <h1 style="margin:0 0 16px;font-size:22px;font-weight:normal;">${escapeHtml(title)}</h1>
           ${body}
         </td></tr>
         <tr><td style="padding:16px 28px 24px;border-top:1px solid #d0c2ae;font-size:12px;color:#6b5e4e;">
-          You’re receiving this because of activity on BONE KOBOYI.
+          You’re receiving this because of activity on ICYACUMI.
         </td></tr>
       </table>
     </td></tr>
@@ -129,7 +130,7 @@ export async function sendVerificationCodeEmail(opts: {
   const verifyUrl = `${FRONTEND_URL}/verify-email?email=${encodeURIComponent(opts.to)}`;
   return sendMail({
     to: opts.to,
-    subject: `${opts.code} is your BONE KOBOYI verification code`,
+    subject: `${opts.code} is your ICYACUMI verification code`,
     html: layout(
       "Verify your email",
       `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(opts.name)},</p>
@@ -144,7 +145,7 @@ export async function sendVerificationCodeEmail(opts: {
 export async function sendWelcomeEmail(opts: { to: string; name: string }) {
   return sendMail({
     to: opts.to,
-    subject: "Welcome to BONE KOBOYI",
+    subject: "Welcome to ICYACUMI",
     html: layout(
       "Welcome",
       `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(opts.name)},</p>
@@ -162,7 +163,7 @@ export async function sendPasswordResetEmail(opts: {
   const resetUrl = `${FRONTEND_URL}/reset-password?email=${encodeURIComponent(opts.to)}`;
   return sendMail({
     to: opts.to,
-    subject: `${opts.code} is your BONE KOBOYI password reset code`,
+    subject: `${opts.code} is your ICYACUMI password reset code`,
     html: layout(
       "Reset your password",
       `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(opts.name)},</p>
@@ -182,11 +183,11 @@ export async function sendBrandInviteEmail(opts: {
 }) {
   return sendMail({
     to: opts.to,
-    subject: `Your ${opts.brandName} brand portal on BONE KOBOYI`,
+    subject: `Your ${opts.brandName} brand portal on ICYACUMI`,
     html: layout(
       "Brand portal access",
       `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(opts.name)},</p>
-       <p style="margin:0 0 16px;line-height:1.5;"><strong>${escapeHtml(opts.brandName)}</strong> is live on BONE KOBOYI. Sign in to manage products, ads, and payouts. Ticketed events are published by the platform admin.</p>
+       <p style="margin:0 0 16px;line-height:1.5;"><strong>${escapeHtml(opts.brandName)}</strong> is live on ICYACUMI. Sign in to manage products, ads, and payouts. Ticketed events are published by the platform admin.</p>
        <p style="margin:0 0 8px;"><strong>Email:</strong> ${escapeHtml(opts.to)}</p>
        <p style="margin:0 0 20px;"><strong>Temporary password:</strong> ${escapeHtml(opts.password)}</p>
        <p style="margin:0;"><a href="${FRONTEND_URL}/login?next=/portal" style="display:inline-block;background:#b5563a;color:#fff;text-decoration:none;padding:12px 20px;border-radius:999px;font-size:12px;letter-spacing:0.16em;text-transform:uppercase;">Open portal</a></p>`,
@@ -203,6 +204,7 @@ export async function sendBrandSignupNotify(opts: {
   ownerEmail: string;
   contactPhone?: string | null;
   applicationNote?: string | null;
+  hasKyc?: boolean;
 }) {
   const to = NOTIFY_EMAIL || SMTP_USER;
   if (!to) return { ok: false as const, error: "No notify address" };
@@ -212,6 +214,9 @@ export async function sendBrandSignupNotify(opts: {
   const phone = opts.contactPhone
     ? `<p style="margin:0 0 8px;"><strong>Phone:</strong> ${escapeHtml(opts.contactPhone)}</p>`
     : "";
+  const kyc = opts.hasKyc
+    ? `<p style="margin:12px 0 0;"><strong>KYC:</strong> National ID + RDB certificate uploaded · review in Admin → Brands.</p>`
+    : `<p style="margin:12px 0 0;color:#b5563a;"><strong>KYC missing</strong> · ask the brand to re-apply with documents.</p>`;
   return sendMail({
     to,
     subject: `Brand approval needed: ${opts.brandName}`,
@@ -224,6 +229,7 @@ export async function sendBrandSignupNotify(opts: {
        <p style="margin:0 0 8px;"><strong>Email:</strong> ${escapeHtml(opts.ownerEmail)}</p>
        ${phone}
        ${note}
+       ${kyc}
        <p style="margin:20px 0 0;"><a href="${FRONTEND_URL}/admin/brands" style="color:#b5563a;">Review in admin</a></p>`,
     ),
   });
@@ -239,7 +245,7 @@ export async function sendBrandApprovedEmail(opts: {
     subject: `${opts.brandName} is approved · open your portal`,
     html: layout(
       "Brand approved",
-      `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(opts.ownerName)}, <strong>${escapeHtml(opts.brandName)}</strong> is approved on BONE KOBOYI.</p>
+      `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(opts.ownerName)}, <strong>${escapeHtml(opts.brandName)}</strong> is approved on ICYACUMI.</p>
        <p style="margin:0 0 16px;">You can log in and start listing products, ads, and managing sales.</p>
        <p style="margin:0;"><a href="${FRONTEND_URL}/login?next=/portal" style="color:#b5563a;">Open brand portal</a></p>`,
     ),
@@ -335,7 +341,7 @@ export async function sendOrderReceiptEmail(opts: {
     html: layout(
       "Your order receipt",
       `<p style="margin:0 0 12px;line-height:1.5;">Hi ${escapeHtml(opts.customerName || "there")},</p>
-       <p style="margin:0 0 16px;line-height:1.5;">Thanks for shopping on BONE KOBOYI. Your payment was successful · here’s your receipt${pdf ? " (PDF attached)" : ""}.</p>
+       <p style="margin:0 0 16px;line-height:1.5;">Thanks for shopping on ICYACUMI. Your payment was successful · here’s your receipt${pdf ? " (PDF attached)" : ""}.</p>
        <p style="margin:0 0 16px;font-size:13px;color:#6b5e4e;">Reference: ${escapeHtml(opts.reference)}</p>
        <table width="100%" cellspacing="0" cellpadding="0" style="font-size:14px;">
          <tr>
@@ -371,7 +377,7 @@ export async function sendOrderReceiptEmail(opts: {
     attachments: pdf
       ? [
           {
-            filename: `BONE-KOBOYI-receipt-${safeRef}.pdf`,
+            filename: `ICYACUMI-receipt-${safeRef}.pdf`,
             content: pdf,
             contentType: "application/pdf",
           },
@@ -420,7 +426,7 @@ export async function sendBrandSaleEmail(opts: {
     subject: `New sale for ${opts.brandName} · ${opts.reference}`,
     html: layout(
       "You made a sale",
-      `<p style="margin:0 0 12px;line-height:1.5;">Good news · <strong>${escapeHtml(opts.brandName)}</strong> just sold on BONE KOBOYI.</p>
+      `<p style="margin:0 0 12px;line-height:1.5;">Good news · <strong>${escapeHtml(opts.brandName)}</strong> just sold on ICYACUMI.</p>
        <p style="margin:0 0 8px;font-size:13px;color:#6b5e4e;">Buyer: ${escapeHtml(opts.customerName || "Customer")}</p>
        ${buyerEmail}
        <p style="margin:0 0 8px;font-size:13px;color:#6b5e4e;">Reference: ${escapeHtml(opts.reference)}</p>
@@ -471,10 +477,16 @@ export async function sendBrandStockAlertEmail(opts: {
 export async function sendPayoutRequestedEmail(opts: {
   brandName: string;
   amount: number;
+  feeAmount?: number;
   note?: string;
   brandEmails: string[];
 }) {
   const adminTo = NOTIFY_EMAIL;
+  const fee = Math.max(0, Math.round(opts.feeAmount ?? 0));
+  const feeLine =
+    fee > 0
+      ? `<p style="margin:0 0 12px;">Withdrawal fee: <strong>${formatRwf(fee)}</strong> · brand receives <strong>${formatRwf(opts.amount)}</strong> · total from earnings <strong>${formatRwf(opts.amount + fee)}</strong>.</p>`
+      : "";
   if (adminTo) {
     await sendMail({
       to: adminTo,
@@ -482,6 +494,7 @@ export async function sendPayoutRequestedEmail(opts: {
       html: layout(
         "Payout requested",
         `<p style="margin:0 0 12px;"><strong>${escapeHtml(opts.brandName)}</strong> requested ${formatRwf(opts.amount)}.</p>
+         ${feeLine}
          ${opts.note ? `<p style="margin:0 0 12px;color:#6b5e4e;">${escapeHtml(opts.note)}</p>` : ""}
          <p style="margin:0;"><a href="${FRONTEND_URL}/admin/payouts" style="color:#b5563a;">Review in admin</a></p>`,
       ),
@@ -494,8 +507,9 @@ export async function sendPayoutRequestedEmail(opts: {
       html: layout(
         "Payout request received",
         `<p style="margin:0 0 12px;">We received your withdrawal request for <strong>${formatRwf(opts.amount)}</strong>.</p>
-         <p style="margin:0 0 12px;color:#6b5e4e;">Status: pending review by the marketplace team.</p>
-         <p style="margin:0;"><a href="${FRONTEND_URL}/portal/payments" style="color:#b5563a;">View payments</a></p>`,
+         ${feeLine}
+         <p style="margin:0;">Admin will review and send the money to your saved payout destination.</p>
+         <p style="margin:12px 0 0;"><a href="${FRONTEND_URL}/portal/payments" style="color:#b5563a;">View payments</a></p>`,
       ),
     });
   }
@@ -585,7 +599,7 @@ export async function sendContactNotification(opts: {
     html: layout(
       "Message received",
       `<p style="margin:0 0 12px;">Hi ${escapeHtml(opts.name)},</p>
-       <p style="margin:0 0 12px;">Thanks for writing to BONE KOBOYI. We got your note about <strong>${escapeHtml(opts.subject)}</strong> and will reply soon.</p>`,
+       <p style="margin:0 0 12px;">Thanks for writing to ICYACUMI. We got your note about <strong>${escapeHtml(opts.subject)}</strong> and will reply soon.</p>`,
     ),
   });
 
@@ -605,7 +619,7 @@ export async function sendContactNotification(opts: {
 export async function sendNewsletterWelcome(opts: { email: string }) {
   return sendMail({
     to: opts.email,
-    subject: "You're on the BONE KOBOYI list",
+    subject: "You're on the ICYACUMI list",
     html: layout(
       "You're on the list",
       `<p style="margin:0 0 12px;">Thanks for subscribing.</p>

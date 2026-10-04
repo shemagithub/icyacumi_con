@@ -24,9 +24,9 @@ export function SiteHeader() {
   if (pathname.startsWith("/portal") || pathname.startsWith("/admin")) return null;
 
   return (
-      <header className="sticky top-0 z-[60] border-b-2 border-coal bg-bone/92 backdrop-blur-md">
+    <header className="site-header-mobile sticky top-0 z-[60] border-b-2 border-coal bg-bone/92 backdrop-blur-md">
       <Container>
-        <div className="flex h-14 items-center gap-3 sm:h-16 sm:gap-4 lg:h-[4.75rem] lg:gap-6">
+        <div className="flex h-14 items-center gap-2.5 sm:h-16 sm:gap-4 lg:h-[4.75rem] lg:gap-6">
           <Link
             href="/"
             className="min-w-0 shrink-0"
@@ -53,6 +53,7 @@ export function SiteHeader() {
                   )}
                   <Link
                     href={item.href}
+                    prefetch
                     className={`group inline-flex items-center gap-1.5 transition-colors xl:gap-2 ${
                       active ? "text-rust" : "text-coal hover:text-rust"
                     }`}
@@ -75,17 +76,17 @@ export function SiteHeader() {
             })}
           </nav>
 
-          <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-3">
+          <div className="site-header-mobile__actions ml-auto flex shrink-0 items-center gap-1 sm:gap-3">
             <SiteSearch />
             <Link
               href="/cart"
-              className="group relative inline-flex min-h-11 min-w-11 items-center justify-center gap-1.5 text-coal transition-colors hover:text-rust xl:gap-2"
+              className="site-header-mobile__chip group relative inline-flex items-center justify-center gap-1.5 text-coal transition-colors hover:text-rust lg:min-h-11 lg:min-w-11 lg:!border-0 lg:!bg-transparent lg:!shadow-none xl:gap-2"
               aria-label={`Bag, ${count} items`}
             >
               <span className="relative inline-flex">
                 <CultureIcon
                   name="pot"
-                  className="h-7 w-7 text-rust transition-colors group-hover:text-indigo lg:h-5 lg:w-5 xl:h-6 xl:w-6"
+                  className="h-6 w-6 text-rust transition-colors group-hover:text-indigo sm:h-7 sm:w-7 lg:h-5 lg:w-5 xl:h-6 xl:w-6"
                 />
                 <span
                   className="culture-fire absolute -top-1.5 -right-1.5 flex h-[1.15rem] min-w-[1.15rem] items-center justify-center rounded-full bg-coal px-1 font-sans text-[0.625rem] leading-none font-bold text-bone tabular-nums ring-2 ring-bone sm:-top-1 sm:-right-1 sm:h-4 sm:min-w-4 sm:text-[0.6rem]"

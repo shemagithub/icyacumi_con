@@ -26,7 +26,7 @@ npm run db:status  # list tables + row counts (phpMyAdmin check)
 2. Select database **`bone_koboyi`**
 3. Open any table (e.g. `Product`, `Brand`, `Order`) → **Browse**
 
-Credentials match `backend/.env` (`root` @ `localhost:3306`, empty password by default).
+Credentials match `backend/.env` (`root` @ `127.0.0.1:3306`, empty password by default).
 
 From the project root:
 
@@ -60,3 +60,19 @@ Demo client: `client@demo.local` / `brand123`
 | `npm run studio` | Prisma Studio (DB UI) |
 
 Set `SKIP_DB_MIGRATE=1` to skip auto migrate on start.
+
+## XentriPay
+
+Checkout collections (MTN MoMo, Airtel Money, card) run on the backend so the merchant key never reaches the browser.
+
+```env
+XENTRIPAY_API_KEY=
+XENTRIPAY_BASE_URL=https://merchant.test.xentripay.com
+FRONTEND_URL=http://localhost:3000
+```
+
+- `POST /api/catalog/payments/initiate` — start a collection (`pmethod` `momo` or `cc`)
+- `GET /api/catalog/payments/status/:ref` — poll until `SUCCESS` / `FAILED`; creates the order only on success
+- Card `redirecturl` / `returl` return to `/checkout/pay/return`
+
+Use the test base URL while integrating. Switch to `https://xentripay.com` for live. Minimum collection is 100 RWF.

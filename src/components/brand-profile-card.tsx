@@ -7,18 +7,21 @@ export function vendorSocialLinks(vendor: Pick<
   Vendor,
   "instagram" | "tiktok" | "facebook" | "twitter" | "youtube" | "website"
 >): SocialLink[] {
-  return (
-    [
-      { href: vendor.instagram, label: "Instagram" },
-      { href: vendor.tiktok, label: "TikTok" },
-      { href: vendor.facebook, label: "Facebook" },
-      { href: vendor.twitter, label: "X" },
-      { href: vendor.youtube, label: "YouTube" },
-      { href: vendor.website, label: "Website" },
-    ] as const
-  )
-    .filter((item): item is { href: string; label: string } => Boolean(item.href?.trim()))
-    .map((item) => ({ href: item.href.trim(), label: item.label }));
+  const candidates = [
+    { href: vendor.instagram, label: "Instagram" },
+    { href: vendor.tiktok, label: "TikTok" },
+    { href: vendor.facebook, label: "Facebook" },
+    { href: vendor.twitter, label: "X" },
+    { href: vendor.youtube, label: "YouTube" },
+    { href: vendor.website, label: "Website" },
+  ] as const;
+
+  const links: SocialLink[] = [];
+  for (const item of candidates) {
+    const href = item.href?.trim();
+    if (href) links.push({ href, label: item.label });
+  }
+  return links;
 }
 
 /**
@@ -137,6 +140,12 @@ export function BrandProfileCard({
               className="inline-flex max-w-full rounded-full bg-rust px-5 py-3 text-xs font-bold tracking-[0.16em] text-bone uppercase transition-colors hover:bg-sand"
             >
               <span className="truncate">See all {vendor.name} products</span>
+            </Link>
+            <Link
+              href={`${brandHref}?tab=sale`}
+              className="inline-flex items-center text-xs tracking-[0.14em] text-rust uppercase underline-offset-4 hover:underline"
+            >
+              Brand sale →
             </Link>
             <Link
               href={brandHref}

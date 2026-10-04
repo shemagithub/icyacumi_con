@@ -1,10 +1,18 @@
 import { Router } from "express";
 import bcrypt from "bcryptjs";
-import { requireAdmin, type AuthedRequest } from "../lib/auth.js";
+import {
+  clearAuthCookie,
+  createAuthToken,
+  requireAdmin,
+  setAuthCookie,
+  type AuthedRequest,
+} from "../lib/auth.js";
+import { parseCredits } from "../lib/credits.js";
 import { prisma } from "../lib/db.js";
 import {
   clampPercent,
   DEFAULT_SETTINGS_ID,
+  getAdminBrandsMoneyOverview,
   getPlatformCommissionReport,
   getPlatformPayoutSummary,
   getPlatformSettings,
@@ -14,7 +22,13 @@ import {
   sendBrandInviteEmail,
   sendListingPublishedEmail,
   sendPayoutStatusEmail,
+  isMailConfigured,
 } from "../lib/mail.js";
+import {
+  isXentriPayConfigured,
+  xentriPayBaseUrl,
+  XENTRIPAY_MIN_AMOUNT,
+} from "../lib/xentripay.js";
 import {
   getLegalPage,
   isLegalId,
@@ -36,9 +50,210 @@ import {
 } from "../lib/orders.js";
 import { mapCoupon, validateCouponFields } from "../lib/coupons.js";
 
+type ChartPoint = { label: string; value: number };
+
+function mondayOf(date: Date) {
+  const day = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+  const weekday = day.getUTCDay() || 7;
+  day.setUTCDate(day.getUTCDate() - weekday + 1);
+  return day;
+}
+
+function weekLabel(date: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    timeZone: "UTC",
+  }).format(date);
+}
+
+function buildDashboardCharts(input: {
+  orders: Array<{ total: number; createdAt: Date; paidAt: Date | null }>;
+  commission: Awaited<ReturnType<typeof getPlatformCommissionReport>>;
+  platformPayout: Awaited<ReturnType<typeof getPlatformPayoutSummary>>;
+  pendingBrandPayout: number;
+  brandCount: number;
+  clientCount: number;
+  productCount: number;
+  eventCount: number;
+  adCount: number;
+  orderCount: number;
+}) {
+  const weeks = 8;
+  const start = mondayOf(new Date());
+  start.setUTCDate(start.getUTCDate() - (weeks - 1) * 7);
+  const salesByWeek: ChartPoint[] = [];
+  for (let i = 0; i < weeks; i += 1) {
+    const week = new Date(start);
+    week.setUTCDate(start.getUTCDate() + i * 7);
+    salesByWeek.push({ label: weekLabel(week), value: 0 });
+  }
+  for (const order of input.orders) {
+    const when = order.paidAt ?? order.createdAt;
+    const week = mondayOf(when);
+    const index = Math.floor((week.getTime() - start.getTime()) / (7 * 24 * 60 * 60 * 1000));
+    if (index >= 0 && index < weeks) {
+      salesByWeek[index]!.value += order.total;
+    }
+  }
+
+  const brands = input.commission.sellingBrands.slice(0, 6).map((row) => ({
+    label: row.brandName,
+    value: row.salesGross,
+  }));
+
+  return {
+    salesByWeek,
+    brands,
+    mix: [
+      { label: "Products", value: input.commission.totals.productSales },
+      { label: "Tickets", value: input.commission.totals.ticketSales },
+    ],
+    split: [
+      { label: "Brands keep", value: input.commission.totals.brandKeeps },
+      { label: "Platform cut", value: input.commission.totals.platformCommission },
+    ],
+    commission: [
+      { label: "Available", value: input.platformPayout.available },
+      { label: "Pending", value: input.platformPayout.pending },
+      { label: "Paid out", value: input.platformPayout.paidOut },
+    ],
+    payouts: [
+      { label: "Brand payouts due", value: input.pendingBrandPayout },
+      { label: "Your available cut", value: input.platformPayout.available },
+    ],
+    marketplace: [
+      { label: "Brands", value: input.brandCount },
+      { label: "Selling", value: input.commission.sellingBrands.length },
+      { label: "Clients", value: input.clientCount },
+    ],
+    catalog: [
+      { label: "Orders", value: input.orderCount },
+      { label: "Products", value: input.productCount },
+      { label: "Events", value: input.eventCount },
+      { label: "Ads", value: input.adCount },
+    ],
+  };
+}
+
 export const adminRouter = Router();
 
 adminRouter.use(requireAdmin);
+
+adminRouter.get("/system-status", async (_req, res) => {
+  let database = false;
+  let pendingPayments = 0;
+  let paidOrdersToday = 0;
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    database = true;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const [pending, paidToday] = await Promise.all([
+      prisma.paymentSession.count({ where: { status: "PENDING" } }),
+      prisma.order.count({
+        where: {
+          status: { not: "cancelled" },
+          paidAt: { gte: start },
+        },
+      }),
+    ]);
+    pendingPayments = pending;
+    paidOrdersToday = paidToday;
+  } catch {
+    database = false;
+  }
+
+  const mailReady = isMailConfigured();
+  const paymentsReady = isXentriPayConfigured();
+
+  res.json({
+    ok: database,
+    checks: [
+      {
+        id: "database",
+        label: "Database",
+        ready: database,
+        detail: database
+          ? "MySQL connected"
+          : "Cannot reach MySQL · check DATABASE_* in backend/.env",
+      },
+      {
+        id: "mail",
+        label: "Email notifications",
+        ready: mailReady,
+        detail: mailReady
+          ? `Sending as ${process.env.MAIL_FROM || process.env.SMTP_USER}`
+          : "Set SMTP_USER / SMTP_PASS in backend/.env",
+      },
+      {
+        id: "payments",
+        label: "XentriPay checkout",
+        ready: paymentsReady,
+        detail: paymentsReady
+          ? `Live collections via ${xentriPayBaseUrl()} · min ${XENTRIPAY_MIN_AMOUNT} RWF`
+          : "Add XENTRIPAY_API_KEY in backend/.env (test or live merchant key)",
+      },
+      {
+        id: "seo",
+        label: "Public SEO",
+        ready: Boolean(process.env.FRONTEND_URL || process.env.NEXT_PUBLIC_SITE_URL),
+        detail: `Sitemap at ${(process.env.FRONTEND_URL ?? "http://localhost:3000").replace(/\/$/, "")}/sitemap.xml`,
+      },
+    ],
+    stats: {
+      pendingPayments,
+      paidOrdersToday,
+    },
+  });
+});
+
+adminRouter.get("/profile", async (req: AuthedRequest, res) => {
+  const session = req.auth!;
+  const admin = await prisma.superAdmin.findUnique({
+    where: { id: session.userId },
+    select: { id: true, email: true, name: true, createdAt: true },
+  });
+  if (!admin) {
+    res.status(404).json({ error: "Admin not found." });
+    return;
+  }
+  res.json({
+    profile: {
+      id: admin.id,
+      email: admin.email,
+      name: admin.name,
+      createdAt: admin.createdAt,
+    },
+  });
+});
+
+adminRouter.patch("/profile", async (req: AuthedRequest, res) => {
+  const session = req.auth!;
+  const name = String(req.body?.name ?? "").trim().slice(0, 120);
+  if (!name) {
+    res.status(400).json({ error: "Name is required." });
+    return;
+  }
+  const admin = await prisma.superAdmin.update({
+    where: { id: session.userId },
+    data: { name },
+    select: { id: true, email: true, name: true },
+  });
+  const nextSession = {
+    type: "admin" as const,
+    userId: admin.id,
+    email: admin.email,
+    name: admin.name,
+  };
+  const token = await createAuthToken(nextSession);
+  setAuthCookie(res, token);
+  res.json({
+    ok: true,
+    profile: { id: admin.id, email: admin.email, name: admin.name },
+    user: nextSession,
+  });
+});
 
 adminRouter.get("/dashboard", async (_req, res) => {
   const [
@@ -53,6 +268,7 @@ adminRouter.get("/dashboard", async (_req, res) => {
     commission,
     orderCount,
     platformPayout,
+    orders,
   ] = await Promise.all([
     prisma.brand.count(),
     prisma.client.count(),
@@ -68,6 +284,10 @@ adminRouter.get("/dashboard", async (_req, res) => {
     getPlatformCommissionReport(),
     prisma.order.count({ where: { status: { not: "cancelled" } } }),
     getPlatformPayoutSummary(),
+    prisma.order.findMany({
+      where: { status: { not: "cancelled" } },
+      select: { total: true, createdAt: true, paidAt: true },
+    }),
   ]);
 
   res.json({
@@ -87,6 +307,18 @@ adminRouter.get("/dashboard", async (_req, res) => {
     sellingBrandCount: commission.sellingBrands.length,
     productCommissionPercent: settings.productCommissionPercent,
     ticketCommissionPercent: settings.ticketCommissionPercent,
+    charts: buildDashboardCharts({
+      orders,
+      commission,
+      platformPayout,
+      pendingBrandPayout: payoutPending._sum.amount ?? 0,
+      brandCount,
+      clientCount,
+      productCount,
+      eventCount,
+      adCount,
+      orderCount,
+    }),
   });
 });
 
@@ -98,6 +330,12 @@ adminRouter.get("/settings", async (_req, res) => {
 adminRouter.get("/commission", async (_req, res) => {
   const report = await getPlatformCommissionReport();
   res.json(report);
+});
+
+/** Every brand wallet + total money circulating across brands. */
+adminRouter.get("/brands-money", async (_req, res) => {
+  const overview = await getAdminBrandsMoneyOverview();
+  res.json(overview);
 });
 
 /** Export any admin table as a PDF download. */
@@ -238,7 +476,53 @@ adminRouter.get("/brands", async (_req, res) => {
       },
     },
   });
-  res.json({ brands });
+  res.json({
+    brands: brands.map((brand) => ({
+      id: brand.id,
+      name: brand.name,
+      slug: brand.slug,
+      location: brand.location,
+      shortBio: brand.shortBio,
+      status: brand.status,
+      applicationNote: brand.applicationNote,
+      contactEmail: brand.contactEmail,
+      contactPhone: brand.contactPhone,
+      rejectedReason: brand.rejectedReason,
+      createdAt: brand.createdAt,
+      kycSubmittedAt: brand.kycSubmittedAt,
+      kycIdReady: Boolean(brand.kycIdDocument),
+      kycRdbReady: Boolean(brand.kycRdbCertificate),
+      _count: brand._count,
+      users: brand.users,
+    })),
+  });
+});
+
+adminRouter.get("/brands/:id/kyc", async (req, res) => {
+  const id = String(req.params.id ?? "");
+  const brand = await prisma.brand.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      name: true,
+      kycIdDocument: true,
+      kycRdbCertificate: true,
+      kycSubmittedAt: true,
+    },
+  });
+  if (!brand) {
+    res.status(404).json({ error: "Brand not found." });
+    return;
+  }
+  res.json({
+    brand: {
+      id: brand.id,
+      name: brand.name,
+      kycSubmittedAt: brand.kycSubmittedAt,
+      kycIdDocument: brand.kycIdDocument,
+      kycRdbCertificate: brand.kycRdbCertificate,
+    },
+  });
 });
 
 adminRouter.post("/brands", async (req, res) => {
@@ -330,6 +614,16 @@ adminRouter.patch("/brands/:id/status", async (req, res) => {
   if (!existing) {
     res.status(404).json({ error: "Brand not found." });
     return;
+  }
+
+  if (status === "approved") {
+    if (!existing.kycIdDocument || !existing.kycRdbCertificate) {
+      res.status(400).json({
+        error:
+          "Cannot approve yet · national ID and RDB certificate KYC docs are missing.",
+      });
+      return;
+    }
   }
 
   const brand = await prisma.brand.update({
@@ -494,6 +788,7 @@ function parseEventBody(body: Record<string, unknown>) {
       imageSrc: String(body.imageSrc ?? "/editorial/look-01.png").trim() ||
         "/editorial/look-01.png",
       imageAlt: String(body.imageAlt ?? title).trim() || title,
+      credits: parseCredits(body.credits),
     },
   };
 }
@@ -578,6 +873,7 @@ adminRouter.patch("/events/:id", async (req, res) => {
     ticketsLeft: req.body?.ticketsLeft ?? existing.ticketsLeft,
     imageSrc: req.body?.imageSrc ?? existing.imageSrc,
     imageAlt: req.body?.imageAlt ?? existing.imageAlt,
+    credits: req.body?.credits ?? existing.credits,
   } as Record<string, unknown>;
 
   const parsed = parseEventBody(body);
@@ -776,12 +1072,153 @@ adminRouter.patch("/platform-payouts/:id", async (req, res) => {
   });
 });
 
-adminRouter.get("/admins", async (_req: AuthedRequest, res) => {
+adminRouter.get("/admins", async (req: AuthedRequest, res) => {
   const admins = await prisma.superAdmin.findMany({
     orderBy: { createdAt: "asc" },
     select: { id: true, name: true, email: true, createdAt: true },
   });
-  res.json({ admins });
+  res.json({
+    admins,
+    currentId: req.auth?.type === "admin" ? req.auth.userId : null,
+  });
+});
+
+adminRouter.post("/admins", async (req: AuthedRequest, res) => {
+  const name = String(req.body?.name ?? "").trim();
+  const email = String(req.body?.email ?? "")
+    .toLowerCase()
+    .trim();
+  const password = String(req.body?.password ?? "");
+
+  if (!name || !email.includes("@") || password.length < 6) {
+    res.status(400).json({
+      error: "Name, a valid email, and a password of at least 6 characters are required.",
+    });
+    return;
+  }
+
+  const exists = await prisma.superAdmin.findUnique({ where: { email } });
+  if (exists) {
+    res.status(409).json({ error: "An admin with that email already exists." });
+    return;
+  }
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const admin = await prisma.superAdmin.create({
+    data: { name, email, passwordHash },
+    select: { id: true, name: true, email: true, createdAt: true },
+  });
+  res.status(201).json({ admin });
+});
+
+adminRouter.delete("/admins/:id", async (req: AuthedRequest, res) => {
+  const id = String(req.params.id ?? "").trim();
+  if (!id) {
+    res.status(400).json({ error: "Admin id is required." });
+    return;
+  }
+  if (req.auth?.type === "admin" && req.auth.userId === id) {
+    res.status(400).json({ error: "You cannot remove your own admin account." });
+    return;
+  }
+
+  const count = await prisma.superAdmin.count();
+  if (count <= 1) {
+    res.status(400).json({ error: "At least one super admin must remain." });
+    return;
+  }
+
+  try {
+    await prisma.superAdmin.delete({ where: { id } });
+    res.json({ ok: true });
+  } catch {
+    res.status(404).json({ error: "Admin not found." });
+  }
+});
+
+/** Set or reset another (or your own) super admin password from the team page. */
+adminRouter.patch("/admins/:id/password", async (req: AuthedRequest, res) => {
+  const id = String(req.params.id ?? "").trim();
+  const nextPassword = String(req.body?.password ?? req.body?.nextPassword ?? "");
+  const confirmPassword = String(req.body?.confirm ?? "");
+  const yourPassword = String(req.body?.yourPassword ?? "");
+
+  if (!id) {
+    res.status(400).json({ error: "Admin id is required." });
+    return;
+  }
+  if (nextPassword.length < 6) {
+    res.status(400).json({ error: "New password must be at least 6 characters." });
+    return;
+  }
+  if (confirmPassword && confirmPassword !== nextPassword) {
+    res.status(400).json({ error: "New passwords do not match." });
+    return;
+  }
+  if (!yourPassword) {
+    res.status(400).json({
+      error: "Enter your current password to confirm this change.",
+    });
+    return;
+  }
+
+  const actorId = req.auth?.type === "admin" ? req.auth.userId : null;
+  if (!actorId) {
+    res.status(401).json({ error: "Admin login required." });
+    return;
+  }
+
+  const [actor, target] = await Promise.all([
+    prisma.superAdmin.findUnique({ where: { id: actorId } }),
+    prisma.superAdmin.findUnique({
+      where: { id },
+      select: { id: true, name: true, email: true },
+    }),
+  ]);
+
+  if (!actor) {
+    res.status(401).json({ error: "Admin login required." });
+    return;
+  }
+  if (!(await bcrypt.compare(yourPassword, actor.passwordHash))) {
+    res.status(400).json({ error: "Your current password is incorrect." });
+    return;
+  }
+  if (!target) {
+    res.status(404).json({ error: "Admin not found." });
+    return;
+  }
+  if (await bcrypt.compare(nextPassword, actor.passwordHash) && actor.id === target.id) {
+    res.status(400).json({
+      error: "New password must be different from the current one.",
+    });
+    return;
+  }
+
+  await prisma.superAdmin.update({
+    where: { id: target.id },
+    data: { passwordHash: await bcrypt.hash(nextPassword, 10) },
+  });
+
+  const self = actor.id === target.id;
+  if (self) {
+    clearAuthCookie(res);
+    res.json({
+      ok: true,
+      self: true,
+      reLogin: true,
+      redirectTo: `/login?changed=1&email=${encodeURIComponent(target.email)}&next=${encodeURIComponent("/admin")}`,
+      message: "Password updated. Sign in again with the new password.",
+    });
+    return;
+  }
+
+  res.json({
+    ok: true,
+    self: false,
+    admin: target,
+    message: `Password updated for ${target.name}. They can sign in with the new password.`,
+  });
 });
 
 adminRouter.get("/legal", async (_req, res) => {

@@ -2,8 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Container } from "@/components/container";
+import { useSwipeNav } from "@/lib/use-swipe-nav";
 import { site } from "@/lib/site";
 import type { AdCreative } from "@/lib/types";
 
@@ -21,26 +22,26 @@ function HeroChrome({
   featureLabel: string;
 }) {
   return (
-    <Container className="relative z-[1] w-full pt-12 pb-12 text-bone sm:pt-16 sm:pb-14 lg:pb-16">
+    <Container className="relative z-[1] w-full pt-12 pb-16 text-center text-bone sm:pt-16 sm:pb-14 md:text-left lg:pb-16">
       <p className="eyebrow text-paint-yellow/90">{site.madeIn}</p>
-      <h1 className="font-brand mt-3 max-w-3xl text-3xl leading-[0.95] tracking-[0.02em] text-bone sm:text-5xl lg:text-6xl">
+      <h1 className="font-brand mx-auto mt-3 max-w-3xl text-3xl leading-[0.95] tracking-[0.02em] text-balance text-bone sm:text-5xl md:mx-0 lg:text-6xl">
         BONE <span className="text-paint-yellow">KOBOYI</span>
       </h1>
-      <p className="mt-3 max-w-lg text-sm leading-relaxed text-bone/85 sm:text-lg">
+      <p className="mx-auto mt-3 max-w-lg text-sm leading-relaxed text-bone/85 sm:text-lg md:mx-0">
         {site.tagline} Find what you want fast · no maze.
       </p>
-      <p className="mt-2 max-w-md text-sm text-bone/65 line-clamp-2">
+      <p className="mx-auto mt-2 max-w-md text-sm text-bone/65 line-clamp-2 md:mx-0">
         <span className="text-bone/90">{featureLabel}</span>
       </p>
-      <div className="mt-6 flex flex-wrap gap-2.5 sm:mt-7 sm:gap-3">
+      <div className="mt-6 flex flex-wrap justify-center gap-2.5 sm:mt-7 sm:gap-3 md:justify-start">
         {PURPOSE_CTAS.map((cta, index) => (
           <Link
             key={cta.href}
             href={cta.href}
             className={
               index === 0
-                ? "craft-btn bg-paint-yellow px-5 py-3 text-xs tracking-[0.18em] text-coal uppercase hover:bg-bone sm:px-7 sm:py-3.5"
-                : "craft-btn-ghost craft-btn-ghost--paint px-5 py-3 text-xs tracking-[0.18em] text-bone uppercase hover:bg-bone/10 sm:px-7 sm:py-3.5"
+                ? "craft-btn bg-paint-yellow px-4 py-3 text-xs tracking-[0.18em] text-coal uppercase hover:bg-bone sm:px-7 sm:py-3.5"
+                : "craft-btn-ghost craft-btn-ghost--paint px-4 py-3 text-xs tracking-[0.18em] text-bone uppercase hover:bg-bone/10 sm:px-7 sm:py-3.5"
             }
           >
             {cta.label}
@@ -62,6 +63,7 @@ function FallbackHero() {
         alt=""
         fill
         priority
+        fetchPriority="high"
         sizes="100vw"
         className="-z-10 object-cover"
       />
@@ -72,12 +74,20 @@ function FallbackHero() {
 }
 
 export function HeroAdsCarousel({ ads }: { ads: AdCreative[] }) {
+  const rootRef = useRef<HTMLElement>(null);
+  const resumeTimer = useRef<number | null>(null);
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const count = ads.length;
 
   const goNext = useCallback(() => {
+    if (count < 2) return;
     setIndex((current) => (current + 1) % count);
+  }, [count]);
+
+  const goPrev = useCallback(() => {
+    if (count < 2) return;
+    setIndex((current) => (current - 1 + count) % count);
   }, [count]);
 
   const goTo = useCallback(
@@ -86,6 +96,31 @@ export function HeroAdsCarousel({ ads }: { ads: AdCreative[] }) {
     },
     [count],
   );
+
+  const pauseAfterSwipe = useCallback(() => {
+    setPaused(true);
+    if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
+    resumeTimer.current = window.setTimeout(() => setPaused(false), 1800);
+  }, []);
+
+  const { consumeSwipeClick } = useSwipeNav({
+    targetRef: rootRef,
+    enabled: count > 1,
+    onNext: () => {
+      pauseAfterSwipe();
+      goNext();
+    },
+    onPrev: () => {
+      pauseAfterSwipe();
+      goPrev();
+    },
+  });
+
+  useEffect(() => {
+    return () => {
+      if (resumeTimer.current) window.clearTimeout(resumeTimer.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (count < 2 || paused) return;
@@ -98,6 +133,18 @@ export function HeroAdsCarousel({ ads }: { ads: AdCreative[] }) {
     return () => window.clearInterval(timer);
   }, [count, paused, goNext]);
 
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node) return;
+    const onClickCapture = (event: MouseEvent) => {
+      if (!consumeSwipeClick()) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    node.addEventListener("click", onClickCapture, true);
+    return () => node.removeEventListener("click", onClickCapture, true);
+  }, [consumeSwipeClick]);
+
   if (count === 0) return <FallbackHero />;
 
   const active = ads[index] ?? ads[0]!;
@@ -109,7 +156,8 @@ export function HeroAdsCarousel({ ads }: { ads: AdCreative[] }) {
 
   return (
     <section
-      className="hero-ads relative isolate flex min-h-[42vh] items-end overflow-hidden sm:min-h-[48vh] lg:min-h-[52vh]"
+      ref={rootRef}
+      className="hero-ads relative isolate flex min-h-[42vh] items-end overflow-hidden touch-pan-y sm:min-h-[48vh] lg:min-h-[52vh]"
       aria-roledescription="carousel"
       aria-label="Featured marketplace"
       onMouseEnter={() => setPaused(true)}
@@ -121,7 +169,6 @@ export function HeroAdsCarousel({ ads }: { ads: AdCreative[] }) {
         }
       }}
     >
-      {/* Only mount active ±1 slides so mobile decode stays light */}
       {ads.map((ad, slideIndex) => {
         if (!visibleIndexes.has(slideIndex)) return null;
         return (
@@ -136,8 +183,10 @@ export function HeroAdsCarousel({ ads }: { ads: AdCreative[] }) {
               alt=""
               fill
               priority={slideIndex === index}
+              fetchPriority={slideIndex === index ? "high" : "low"}
               sizes="100vw"
-              className="object-cover"
+              className="pointer-events-none object-cover"
+              draggable={false}
             />
           </div>
         );

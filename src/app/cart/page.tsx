@@ -17,7 +17,7 @@ export default function CartPage() {
         Bag
       </h1>
       <p className="mt-3 max-w-xl text-sm text-bone-dim">
-        Products and tickets. Checkout when ready.
+        Add products and tickets anytime. Sign in when you&rsquo;re ready to checkout.
       </p>
       <div className="mt-10">
         <CartGate />

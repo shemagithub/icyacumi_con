@@ -59,7 +59,8 @@ export default function CheckoutPayPage() {
             Pay securely
           </h1>
           <p className="mt-4 text-base leading-relaxed text-bone-dim">
-            Pick MTN MoMo, Airtel Money, or card · then confirm to finish your order.
+            Pick MTN MoMo, Airtel Money, or card. Live collections go through
+            XentriPay — we only confirm the order after payment succeeds.
           </p>
         </header>
 

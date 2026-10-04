@@ -8,9 +8,11 @@ import {
   type DragEvent,
   type FormEvent,
 } from "react";
+import { CreditsEditor } from "@/components/credits-editor";
 import { categories, collections } from "@/data/catalog";
+import { parseCredits } from "@/lib/credits";
 import { fileToProductImageDataUrl } from "@/lib/product-images";
-import type { CategorySlug, CollectionSlug, Size } from "@/lib/types";
+import type { CategorySlug, CollectionSlug, Credit, Size } from "@/lib/types";
 
 const MAX_IMAGES = 8;
 
@@ -43,6 +45,7 @@ export type PortalProductPayload = {
   sizes: Size[];
   colors: ColorDraft[];
   details: string[];
+  credits: Credit[];
   images: Array<{ src: string; alt: string }>;
 };
 
@@ -62,6 +65,7 @@ const EMPTY_FORM = {
   sizes: ["S", "M", "L", "XL"] as Size[],
   colors: [{ name: "Coal", hex: "#17171A" }] as ColorDraft[],
   detailsText: "",
+  credits: [] as Credit[],
   imageSrcs: [] as string[],
 };
 
@@ -249,6 +253,7 @@ export function PortalProductFormModal({
         .split(/\r?\n/)
         .map((line) => line.trim())
         .filter(Boolean),
+      credits: parseCredits(form.credits),
       images: form.imageSrcs.map((src) => ({
         src,
         alt: form.name.trim() || "Product",
@@ -358,7 +363,7 @@ export function PortalProductFormModal({
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-semibold">
-                    Compare-at (optional)
+                    Discount promo · was price
                   </span>
                   <input
                     type="number"
@@ -369,8 +374,13 @@ export function PortalProductFormModal({
                       setForm((p) => ({ ...p, compareAtPrice: e.target.value }))
                     }
                     className="portal-input"
-                    placeholder="Was price"
+                    placeholder="Was price, higher than shop price"
                   />
+                  <span className="mt-1.5 block text-xs leading-relaxed text-[var(--portal-muted)]">
+                    For pieces sitting in stock: set a higher was-price. It shows a
+                    red sale price, lands on the homepage shuffle, this brand&apos;s
+                    Sale tab, and /shop/sale.
+                  </span>
                 </label>
                 <label className="block">
                   <span className="mb-1.5 block text-sm font-semibold">
@@ -602,6 +612,13 @@ export function PortalProductFormModal({
                   placeholder={"Corduroy collar\nTwo chest flap pockets\nRe-waxable finish"}
                 />
               </label>
+            </section>
+
+            <section className="space-y-3">
+              <CreditsEditor
+                value={form.credits}
+                onChange={(credits) => setForm((p) => ({ ...p, credits }))}
+              />
             </section>
 
             <section className="space-y-3">

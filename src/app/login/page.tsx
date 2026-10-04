@@ -142,12 +142,6 @@ function LoginForm() {
           Forgot password?
         </Link>
       </p>
-      <p className="mt-3 text-xs text-bone-dim">
-        Demo · client: <code>client@demo.local</code> · brand:{" "}
-        <code>bone.koboyi@portal.local</code> · admin:{" "}
-        <code>admin@bonekoboyi.com</code> · password: <code>brand123</code> /{" "}
-        <code>admin123</code>
-      </p>
     </div>
   );
 }

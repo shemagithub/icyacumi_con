@@ -7,11 +7,12 @@ import bcrypt from "bcryptjs";
 import "dotenv/config";
 
 const adapter = new PrismaMariaDb({
-  host: process.env.DATABASE_HOST ?? "localhost",
+  host: process.env.DATABASE_HOST ?? "127.0.0.1",
   user: process.env.DATABASE_USER ?? "root",
   password: process.env.DATABASE_PASSWORD ?? "",
   database: process.env.DATABASE_NAME ?? "bone_koboyi",
   port: Number(process.env.DATABASE_PORT ?? 3306),
+  connectTimeout: 10_000,
 });
 
 const prisma = new PrismaClient({ adapter });
@@ -92,6 +93,7 @@ async function main() {
           ? Math.max(1, Number(product.stockQuantity) || 25)
           : 0,
         views: product.views,
+        credits: (product.credits ?? []) as unknown as Prisma.InputJsonValue,
       },
       create: {
         id: product.id,
@@ -117,6 +119,7 @@ async function main() {
           ? Math.max(1, Number(product.stockQuantity) || 25)
           : 0,
         views: product.views,
+        credits: (product.credits ?? []) as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -139,6 +142,7 @@ async function main() {
         ticketsLeft: event.ticketsLeft,
         imageSrc: event.image.src,
         imageAlt: event.image.alt,
+        credits: (event.credits ?? []) as unknown as Prisma.InputJsonValue,
       },
       create: {
         id: event.id,
@@ -155,6 +159,7 @@ async function main() {
         ticketsLeft: event.ticketsLeft,
         imageSrc: event.image.src,
         imageAlt: event.image.alt,
+        credits: (event.credits ?? []) as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -179,6 +184,7 @@ async function main() {
         ctaHref: ad.ctaHref,
         ctaLabel: ad.ctaLabel,
         featured: Boolean(ad.featured),
+        credits: (ad.credits ?? []) as unknown as Prisma.InputJsonValue,
       },
       create: {
         id: ad.id,
@@ -193,6 +199,7 @@ async function main() {
         ctaHref: ad.ctaHref,
         ctaLabel: ad.ctaLabel,
         featured: Boolean(ad.featured),
+        credits: (ad.credits ?? []) as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -220,15 +227,35 @@ async function main() {
     },
   });
 
+  const adminEmail = "icyacumiicon@gmail.com";
   const adminHash = await bcrypt.hash("admin123", 10);
+  // Move legacy seed email if it still exists.
+  const legacy = await prisma.superAdmin.findUnique({
+    where: { email: "admin@icyacumi.com" },
+  });
+  if (legacy) {
+    const taken = await prisma.superAdmin.findUnique({ where: { email: adminEmail } });
+    if (taken) {
+      await prisma.superAdmin.delete({ where: { id: legacy.id } });
+    } else {
+      await prisma.superAdmin.update({
+        where: { id: legacy.id },
+        data: {
+          email: adminEmail,
+          passwordHash: adminHash,
+          name: "Super Admin",
+        },
+      });
+    }
+  }
   await prisma.superAdmin.upsert({
-    where: { email: "admin@bonekoboyi.com" },
+    where: { email: adminEmail },
     update: {
       passwordHash: adminHash,
       name: "Super Admin",
     },
     create: {
-      email: "admin@bonekoboyi.com",
+      email: adminEmail,
       passwordHash: adminHash,
       name: "Super Admin",
     },
@@ -251,7 +278,8 @@ async function main() {
     console.log(`  ${vendor.name}: ${vendor.slug.replace(/-/g, ".")}@portal.local`);
   }
   console.log("Demo client: client@demo.local / brand123");
-  console.log("Super admin: admin@bonekoboyi.com / admin123");
+  console.log("Super admin: icyacumiicon@gmail.com / admin123");
+  console.log("(Password reset codes are emailed to that Gmail address.)");
   console.log("Default product commission: 10% · ticket commission: 5%");
 
   const { ensureLegalPages } = await import("../src/lib/legal.js");

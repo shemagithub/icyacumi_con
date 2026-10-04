@@ -29,31 +29,35 @@ export function Price({
   compareAt,
   currency,
   size = "md",
+  onDark = false,
   className = "",
 }: {
   amount: number;
   compareAt?: number;
   currency?: string;
   size?: PriceSize;
+  onDark?: boolean;
   className?: string;
 }) {
   const onSale = Boolean(compareAt && compareAt > amount);
   const styles = SIZE[size];
+  const currentTone = onDark
+    ? "text-paint-yellow"
+    : onSale
+      ? "text-rust"
+      : "text-coal";
+  const wasTone = onDark ? "text-bone/55" : "text-bone-dim";
 
   return (
     <span
       className={`inline-flex flex-wrap items-baseline ${styles.stack} ${className}`}
     >
-      <span
-        className={`price-tag tabular-nums ${styles.current} ${
-          onSale ? "text-rust" : "text-coal"
-        }`}
-      >
+      <span className={`price-tag tabular-nums ${styles.current} ${currentTone}`}>
         {formatPrice(amount, currency)}
       </span>
       {onSale && compareAt ? (
         <span
-          className={`price-tag-was tabular-nums text-bone-dim line-through ${styles.was}`}
+          className={`price-tag-was tabular-nums line-through ${styles.was} ${wasTone}`}
         >
           {formatPrice(compareAt, currency)}
         </span>

@@ -99,6 +99,9 @@ export default function AdminOrdersPage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
+          <p className="text-[0.65rem] font-bold tracking-[0.16em] text-[var(--portal-muted)] uppercase">
+            Marketplace
+          </p>
           <h1 className="text-2xl font-bold tracking-tight">Orders</h1>
           <p className="mt-1 text-sm text-[var(--portal-muted)]">
             Fulfillment · update status and tracking so customers can follow delivery.

@@ -30,7 +30,21 @@ export function clampPercent(value: number) {
 
 type ProductLike = { price: number; views: number };
 type EventLike = { price: number; capacity: number; ticketsLeft: number };
-type PayoutLike = { amount: number; status: string };
+type PayoutLike = { amount: number; feeAmount?: number | null; status: string };
+
+/** Flat RWF fee charged from brand earnings on every withdrawal request. */
+export const BRAND_WITHDRAWAL_FEE_RWF = 350;
+
+/** Minimum net amount a brand can request to receive. */
+export const BRAND_WITHDRAWAL_MIN_NET_RWF = 100;
+
+/** Total deducted from available balance for a payout row. */
+export function payoutBalanceDebit(payout: {
+  amount: number;
+  feeAmount?: number | null;
+}) {
+  return Math.max(0, Math.round(payout.amount)) + Math.max(0, Math.round(payout.feeAmount ?? 0));
+}
 
 /** Platform commission report from real paid order lines, per brand. */
 export async function getPlatformCommissionReport() {
@@ -214,6 +228,155 @@ export async function getPlatformCommissionReport() {
     brands: brandRows,
     sellingBrands,
     totals,
+  };
+}
+
+/**
+ * Admin view: every brand wallet (earned / available / pending) + marketplace circulation.
+ * Available = brand keeps from paid sales − (payout net + withdrawal fees) pending/paid.
+ */
+export async function getAdminBrandsMoneyOverview() {
+  const [report, payouts, brands] = await Promise.all([
+    getPlatformCommissionReport(),
+    prisma.payout.findMany({
+      select: {
+        brandId: true,
+        amount: true,
+        feeAmount: true,
+        status: true,
+      },
+    }),
+    prisma.brand.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        payoutProvider: true,
+        payoutAccount: true,
+      },
+    }),
+  ]);
+
+  const salesByBrand = new Map(
+    report.brands.map((row) => [row.brandId, row]),
+  );
+
+  type PayoutAcc = {
+    paidOut: number;
+    pending: number;
+    feesPaid: number;
+    feesPending: number;
+  };
+  const payoutByBrand = new Map<string, PayoutAcc>();
+  for (const payout of payouts) {
+    const acc = payoutByBrand.get(payout.brandId) ?? {
+      paidOut: 0,
+      pending: 0,
+      feesPaid: 0,
+      feesPending: 0,
+    };
+    const fee = Math.max(0, Math.round(payout.feeAmount ?? 0));
+    const net = Math.max(0, Math.round(payout.amount));
+    if (payout.status === "paid") {
+      acc.paidOut += net;
+      acc.feesPaid += fee;
+    } else if (payout.status === "pending") {
+      acc.pending += net;
+      acc.feesPending += fee;
+    }
+    payoutByBrand.set(payout.brandId, acc);
+  }
+
+  const rows = brands.map((brand) => {
+    const sales = salesByBrand.get(brand.id);
+    const payout = payoutByBrand.get(brand.id) ?? {
+      paidOut: 0,
+      pending: 0,
+      feesPaid: 0,
+      feesPending: 0,
+    };
+    const totalEarned = sales?.brandKeeps ?? 0;
+    const platformCommission = sales?.platformCommission ?? 0;
+    const salesGross = sales?.salesGross ?? 0;
+    const feesCollected = payout.feesPaid + payout.feesPending;
+    const walletDebited = payout.paidOut + payout.pending + feesCollected;
+    const available = Math.max(0, totalEarned - walletDebited);
+    return {
+      brandId: brand.id,
+      brandName: brand.name,
+      brandSlug: brand.slug,
+      status: brand.status,
+      payoutProvider: brand.payoutProvider,
+      payoutAccount: brand.payoutAccount,
+      orderCount: sales?.orderCount ?? 0,
+      salesGross,
+      platformCommission,
+      productCommission: sales?.productCommission ?? 0,
+      ticketCommission: sales?.ticketCommission ?? 0,
+      totalEarned,
+      /** Net sent / waiting to brand (excludes withdrawal fee). */
+      paidOut: payout.paidOut,
+      pending: payout.pending,
+      feesPaid: payout.feesPaid,
+      feesPending: payout.feesPending,
+      feesCollected,
+      available,
+    };
+  });
+
+  rows.sort(
+    (a, b) =>
+      b.available - a.available ||
+      b.totalEarned - a.totalEarned ||
+      a.brandName.localeCompare(b.brandName),
+  );
+
+  const withBalance = rows.filter((row) => row.available > 0 || row.pending > 0);
+  const earning = rows.filter((row) => row.totalEarned > 0);
+
+  const totals = rows.reduce(
+    (sum, row) => ({
+      salesGross: sum.salesGross + row.salesGross,
+      platformCommission: sum.platformCommission + row.platformCommission,
+      brandEarned: sum.brandEarned + row.totalEarned,
+      brandAvailable: sum.brandAvailable + row.available,
+      brandPending: sum.brandPending + row.pending,
+      brandPaidOut: sum.brandPaidOut + row.paidOut,
+      withdrawalFees: sum.withdrawalFees + row.feesCollected,
+      feesPending: sum.feesPending + row.feesPending,
+      orderCount: sum.orderCount + row.orderCount,
+    }),
+    {
+      salesGross: 0,
+      platformCommission: 0,
+      brandEarned: 0,
+      brandAvailable: 0,
+      brandPending: 0,
+      brandPaidOut: 0,
+      withdrawalFees: 0,
+      feesPending: 0,
+      orderCount: 0,
+    },
+  );
+
+  return {
+    settings: report.settings,
+    brands: rows,
+    brandsWithBalance: withBalance,
+    earningBrands: earning,
+    totals: {
+      ...totals,
+      /** Money still sitting in brand wallets (available to withdraw). */
+      circulatingInBrandAccounts: totals.brandAvailable,
+      /** Available + pending payouts (net + fee) still owed to brands. */
+      circulatingWithPending:
+        totals.brandAvailable + totals.brandPending + totals.feesPending,
+      brandCount: brands.length,
+      brandsWithBalanceCount: withBalance.length,
+      earningBrandCount: earning.length,
+    },
   };
 }
 
@@ -453,12 +616,21 @@ export async function getBrandPayoutSummary(brandId: string) {
 
   const paidOut = payouts
     .filter((p) => p.status === "paid")
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + payoutBalanceDebit(p), 0);
   const pending = payouts
     .filter((p) => p.status === "pending")
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + payoutBalanceDebit(p), 0);
+  const feesPaid = payouts
+    .filter((p) => p.status === "paid" || p.status === "pending")
+    .reduce((sum, p) => sum + Math.max(0, p.feeAmount ?? 0), 0);
   const totalEarned = sales.totals.brandKeeps;
   const available = Math.max(0, totalEarned - paidOut - pending);
+  const maxReceivable = Math.max(
+    0,
+    available >= BRAND_WITHDRAWAL_FEE_RWF + BRAND_WITHDRAWAL_MIN_NET_RWF
+      ? available - BRAND_WITHDRAWAL_FEE_RWF
+      : 0,
+  );
   const catalogValue = products.reduce((sum, p) => sum + p.price, 0);
 
   return {
@@ -475,6 +647,10 @@ export async function getBrandPayoutSummary(brandId: string) {
     totalEarned,
     paidOut,
     pending,
+    feesPaid,
+    withdrawalFee: BRAND_WITHDRAWAL_FEE_RWF,
+    minWithdrawal: BRAND_WITHDRAWAL_MIN_NET_RWF,
+    maxReceivable,
     available,
     availableEstimate: available,
     salesGross: sales.totals.salesGross,
@@ -523,10 +699,10 @@ export function computeBrandEarnings(input: {
 
   const paidOut = payouts
     .filter((p) => p.status === "paid")
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + payoutBalanceDebit(p), 0);
   const pending = payouts
     .filter((p) => p.status === "pending")
-    .reduce((sum, p) => sum + p.amount, 0);
+    .reduce((sum, p) => sum + payoutBalanceDebit(p), 0);
   const available = Math.max(0, totalEarned - paidOut - pending);
 
   return {

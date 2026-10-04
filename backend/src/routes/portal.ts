@@ -10,7 +10,13 @@ import {
   type AuthSession,
 } from "../lib/auth.js";
 import { prisma } from "../lib/db.js";
-import { getBrandPayoutSummary, listBrandSales } from "../lib/earnings.js";
+import {
+  BRAND_WITHDRAWAL_FEE_RWF,
+  BRAND_WITHDRAWAL_MIN_NET_RWF,
+  getBrandPayoutSummary,
+  listBrandSales,
+  payoutBalanceDebit,
+} from "../lib/earnings.js";
 import {
   STATUS_LABELS,
   ORDER_STATUSES,
@@ -21,6 +27,7 @@ import {
   type OrderStatus,
 } from "../lib/orders.js";
 import { parseStockQuantity } from "../lib/inventory.js";
+import { parseCredits } from "../lib/credits.js";
 import { mapAd, mapEvent, mapProduct } from "../lib/mappers.js";
 import {
   sendListingPublishedEmail,
@@ -279,6 +286,7 @@ portalRouter.post("/products", requireBrand, async (req: AuthedRequest, res) => 
   const colors = parseProductColors(req.body?.colors);
   const sizes = parseProductSizes(req.body?.sizes);
   const details = parseProductDetails(req.body?.details);
+  const credits = parseCredits(req.body?.credits);
   const tagline =
     String(req.body?.tagline ?? "").trim().slice(0, 255) || "Brand drop";
   const description =
@@ -301,6 +309,7 @@ portalRouter.post("/products", requireBrand, async (req: AuthedRequest, res) => 
       fabric: String(req.body?.fabric ?? "See brand").trim().slice(0, 255) || "See brand",
       fit: String(req.body?.fit ?? "True to size").trim().slice(0, 255) || "True to size",
       details,
+      credits,
       badge: req.body?.badge ? String(req.body.badge).trim().slice(0, 60) : null,
       featured: Boolean(req.body?.featured),
       stockQuantity,
@@ -355,6 +364,7 @@ portalRouter.patch("/products/:id", requireBrand, async (req: AuthedRequest, res
   if (body.colors !== undefined) data.colors = parseProductColors(body.colors);
   if (body.sizes !== undefined) data.sizes = parseProductSizes(body.sizes);
   if (body.details !== undefined) data.details = parseProductDetails(body.details);
+  if (body.credits !== undefined) data.credits = parseCredits(body.credits);
   if (body.images !== undefined || typeof body.imageSrc === "string") {
     data.images = parseProductImages(
       body.images ?? body.imageSrc,
@@ -405,13 +415,13 @@ portalRouter.get("/events", requireBrand, async (req: AuthedRequest, res) => {
 
 portalRouter.post("/events", requireBrand, async (_req, res) => {
   res.status(403).json({
-    error: "Events are created by the platform admin. Contact BONE KOBOYI to list an event.",
+    error: "Events are created by the platform admin. Contact ICYACUMI to list an event.",
   });
 });
 
 portalRouter.delete("/events/:id", requireBrand, async (_req, res) => {
   res.status(403).json({
-    error: "Events are managed by the platform admin. Contact BONE KOBOYI to change or remove an event.",
+    error: "Events are managed by the platform admin. Contact ICYACUMI to change or remove an event.",
   });
 });
 
@@ -448,6 +458,7 @@ portalRouter.post("/ads", requireBrand, async (req: AuthedRequest, res) => {
       ctaHref: String(req.body?.ctaHref ?? "/shop"),
       ctaLabel: String(req.body?.ctaLabel ?? "Shop now"),
       featured: Boolean(req.body?.featured),
+      credits: parseCredits(req.body?.credits),
     },
     include: { brand: true },
   });
@@ -474,6 +485,70 @@ portalRouter.delete("/ads/:id", requireBrand, async (req: AuthedRequest, res) =>
   }
   await prisma.ad.delete({ where: { id: existing.id } });
   res.json({ ok: true });
+});
+
+portalRouter.get("/profile", requireBrand, async (req: AuthedRequest, res) => {
+  const session = brandOf(req);
+  const user = await prisma.brandUser.findUnique({
+    where: { id: session.userId },
+    select: {
+      id: true,
+      email: true,
+      name: true,
+      createdAt: true,
+      brand: { select: { name: true, slug: true } },
+    },
+  });
+  if (!user) {
+    res.status(404).json({ error: "Account not found." });
+    return;
+  }
+  res.json({
+    profile: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      brandName: user.brand.name,
+      brandSlug: user.brand.slug,
+      createdAt: user.createdAt,
+    },
+  });
+});
+
+portalRouter.patch("/profile", requireBrand, async (req: AuthedRequest, res) => {
+  const session = brandOf(req);
+  const name = String(req.body?.name ?? "").trim().slice(0, 120);
+  if (!name) {
+    res.status(400).json({ error: "Name is required." });
+    return;
+  }
+  const user = await prisma.brandUser.update({
+    where: { id: session.userId },
+    data: { name },
+    include: { brand: { select: { name: true, slug: true } } },
+  });
+  const nextSession: AuthSession = {
+    type: "brand",
+    userId: user.id,
+    brandId: user.brandId,
+    email: user.email,
+    name: user.name,
+    brandName: user.brand.name,
+    brandSlug: user.brand.slug,
+  };
+  const token = await createAuthToken(nextSession);
+  setAuthCookie(res, token);
+  res.json({
+    ok: true,
+    profile: {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      brandName: user.brand.name,
+      brandSlug: user.brand.slug,
+    },
+    user: nextSession,
+  });
 });
 
 portalRouter.get("/settings", requireBrand, async (req: AuthedRequest, res) => {
@@ -749,8 +824,11 @@ portalRouter.post("/payments", requireBrand, async (req: AuthedRequest, res) => 
 
   if (body.action === "payout") {
     const amount = Math.round(Number(body.amount));
-    if (!Number.isFinite(amount) || amount < 100) {
-      res.status(400).json({ error: "Minimum payout is RWF 100." });
+    const feeAmount = BRAND_WITHDRAWAL_FEE_RWF;
+    if (!Number.isFinite(amount) || amount < BRAND_WITHDRAWAL_MIN_NET_RWF) {
+      res.status(400).json({
+        error: `Minimum withdrawal is RWF ${BRAND_WITHDRAWAL_MIN_NET_RWF} (plus ${feeAmount} RWF fee).`,
+      });
       return;
     }
 
@@ -762,10 +840,15 @@ portalRouter.post("/payments", requireBrand, async (req: AuthedRequest, res) => 
 
     const summary = await getBrandPayoutSummary(brandId);
     const available = summary.available;
+    const totalDebit = payoutBalanceDebit({ amount, feeAmount });
 
-    if (amount > available) {
+    if (totalDebit > available) {
+      const maxNet = Math.max(0, available - feeAmount);
       res.status(400).json({
-        error: `You can only withdraw up to ${available.toLocaleString()} RWF available.`,
+        error:
+          maxNet < BRAND_WITHDRAWAL_MIN_NET_RWF
+            ? `Need at least ${(feeAmount + BRAND_WITHDRAWAL_MIN_NET_RWF).toLocaleString()} RWF available (includes ${feeAmount.toLocaleString()} RWF withdrawal fee).`
+            : `You can withdraw up to ${maxNet.toLocaleString()} RWF after the ${feeAmount.toLocaleString()} RWF fee (available ${available.toLocaleString()} RWF).`,
       });
       return;
     }
@@ -792,26 +875,38 @@ portalRouter.post("/payments", requireBrand, async (req: AuthedRequest, res) => 
       });
     }
 
+    const noteBase = String(
+      body.note ?? `Withdraw via ${provider.toUpperCase()} · ${account}`,
+    ).trim();
+    const feeNote = `Withdrawal fee ${feeAmount} RWF · you receive ${amount.toLocaleString()} RWF`;
+    const note = [noteBase, feeNote].filter(Boolean).join(" · ").slice(0, 500);
+
     const payout = await prisma.payout.create({
       data: {
         brandId,
         amount,
+        feeAmount,
         currency: "RWF",
         status: "pending",
-        note: String(
-          body.note ?? `Withdraw via ${provider.toUpperCase()} · ${account}`,
-        ).slice(0, 500),
+        note,
       },
     });
 
     void sendPayoutRequestedEmail({
       brandName: brand.name,
       amount: payout.amount,
+      feeAmount: payout.feeAmount,
       note: payout.note ?? undefined,
       brandEmails: await brandOwnerEmails(brandId),
     });
 
-    res.status(201).json({ payout, available: available - amount });
+    res.status(201).json({
+      payout,
+      feeAmount,
+      totalDebit,
+      youReceive: amount,
+      available: available - totalDebit,
+    });
     return;
   }
 

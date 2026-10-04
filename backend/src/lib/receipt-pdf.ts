@@ -53,7 +53,7 @@ export async function buildOrderReceiptPdf(input: ReceiptPdfInput): Promise<Buff
       margin: 48,
       info: {
         Title: `Receipt ${input.reference}`,
-        Author: "BONE KOBOYI",
+        Author: "ICYACUMI",
         Subject: "Order receipt",
       },
     });
@@ -70,7 +70,7 @@ export async function buildOrderReceiptPdf(input: ReceiptPdfInput): Promise<Buff
       .fillColor("#1a1410")
       .font("Helvetica-Bold")
       .fontSize(22)
-      .text("BONE KOBOYI", { width: pageWidth });
+      .text("ICYACUMI", { width: pageWidth });
     y = doc.y + 4;
     doc
       .fillColor("#6b5e52")
@@ -241,7 +241,7 @@ export async function buildOrderReceiptPdf(input: ReceiptPdfInput): Promise<Buff
       .font("Helvetica")
       .fontSize(9)
       .text(
-        "Thank you for shopping with BONE KOBOYI. Keep this PDF as your receipt.",
+        "Thank you for shopping with ICYACUMI. Keep this PDF as your receipt.",
         doc.page.margins.left,
         y,
         { width: pageWidth },

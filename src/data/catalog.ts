@@ -121,6 +121,10 @@ export const products: Product[] = [
     stockQuantity: 25,
     vendorId: "v-bone",
     views: 18420,
+    credits: [
+      { role: "Tailor", name: "Jean Bosco" },
+      { role: "Photographer", name: "Aline N." },
+    ],
   },
   {
     id: "bk-002",

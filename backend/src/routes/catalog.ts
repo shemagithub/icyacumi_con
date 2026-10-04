@@ -9,14 +9,22 @@ import {
   shippingForSubtotal,
   type SharedCartLine,
 } from "../lib/orders.js";
+import {
+  normalizePaymentMethod,
+  paymentMethodLabel,
+  resolvePricedLines,
+} from "../lib/checkout-order.js";
 import { readAuthFromCookie, AUTH_COOKIE } from "../lib/auth.js";
 import { getLegalPage, isLegalId } from "../lib/legal.js";
 import { getSiteSettings } from "../lib/site-settings.js";
 import { quoteCoupon, redeemCoupon } from "../lib/coupons.js";
 import { consumeInventory } from "../lib/inventory.js";
 import { notifyBrandsOfSale } from "../lib/brand-notifications.js";
+import { catalogCache } from "../lib/http-cache.js";
 
 export const catalogRouter = Router();
+
+catalogRouter.use(catalogCache);
 
 type OrderLineIn = {
   name?: string;
@@ -185,136 +193,6 @@ catalogRouter.post("/coupons/validate", async (req, res) => {
   }
   res.json(quote);
 });
-
-
-async function resolvePricedLines(
-  rawLines: Array<Record<string, unknown>>,
-): Promise<{ lines: SharedCartLine[] } | { error: string }> {
-  const lines: SharedCartLine[] = [];
-  const remainingProduct = new Map<string, number>();
-  const remainingTickets = new Map<string, number>();
-
-  for (const raw of rawLines.slice(0, 40)) {
-    const productId = String(raw.productId ?? "").trim();
-    const quantity = Math.max(1, Math.min(99, Math.round(Number(raw.quantity) || 1)));
-    const size = String(raw.size ?? "OS").slice(0, 20);
-    const color = String(raw.color ?? "").slice(0, 80);
-    const kind =
-      raw.kind === "ticket" || color === "Ticket" ? "ticket" : "product";
-
-    if (!productId) {
-      return { error: "Invalid cart lines." };
-    }
-
-    if (kind === "ticket") {
-      const event = await prisma.event.findUnique({
-        where: { id: productId },
-        include: { brand: { select: { name: true } } },
-      });
-      if (!event) return { error: "An event ticket is no longer available." };
-      let left = remainingTickets.get(event.id);
-      if (left === undefined) {
-        left = event.ticketsLeft;
-        remainingTickets.set(event.id, left);
-      }
-      if (left <= 0) {
-        return { error: `${event.title} is sold out.` };
-      }
-      if (quantity > left) {
-        return { error: `Only ${left} tickets left for ${event.title}.` };
-      }
-      remainingTickets.set(event.id, left - quantity);
-
-      lines.push({
-        id: String(raw.id ?? `${productId}:OS:Ticket`),
-        productId: event.id,
-        slug: event.slug,
-        name: `${event.title} · ticket`,
-        price: event.price,
-        size: "OS",
-        color: "Ticket",
-        quantity,
-        kind: "ticket",
-        brandId: event.brandId,
-        brandName: event.brand?.name ?? null,
-        image: {
-          src: event.imageSrc,
-          alt: event.imageAlt || event.title,
-        },
-      });
-      continue;
-    }
-
-    const product = await prisma.product.findUnique({
-      where: { id: productId },
-      include: { brand: { select: { name: true } } },
-    });
-    if (!product) return { error: "A product in the bag is no longer available." };
-
-    let left = remainingProduct.get(product.id);
-    if (left === undefined) {
-      left =
-        product.inStock && product.stockQuantity > 0 ? product.stockQuantity : 0;
-      remainingProduct.set(product.id, left);
-    }
-    if (left <= 0) {
-      return { error: `${product.name} is sold out.` };
-    }
-    if (quantity > left) {
-      return {
-        error: `Only ${left} left in stock for ${product.name}.`,
-      };
-    }
-    remainingProduct.set(product.id, left - quantity);
-
-    const sizes = Array.isArray(product.sizes)
-      ? (product.sizes as unknown[]).map(String)
-      : [];
-    if (sizes.length && !sizes.includes(size)) {
-      return { error: `${product.name} isn’t available in size ${size}.` };
-    }
-
-    const colors = Array.isArray(product.colors)
-      ? (product.colors as Array<{ name?: string }>)
-      : [];
-    const colorNames = colors
-      .map((entry) => String(entry?.name ?? "").trim())
-      .filter(Boolean);
-    const resolvedColor = colorNames.includes(color)
-      ? color
-      : colorNames[0] || color || "-";
-    if (color && colorNames.length && !colorNames.includes(color)) {
-      return { error: `${product.name} isn’t available in ${color}.` };
-    }
-
-    const images = Array.isArray(product.images) ? product.images : [];
-    const firstImage =
-      images[0] && typeof images[0] === "object"
-        ? (images[0] as { src?: string; alt?: string })
-        : null;
-
-    lines.push({
-      id: String(raw.id ?? `${productId}:${size}:${resolvedColor}`),
-      productId: product.id,
-      slug: product.slug,
-      name: product.name,
-      price: product.price,
-      size,
-      color: resolvedColor,
-      quantity,
-      kind: "product",
-      brandId: product.brandId,
-      brandName: product.brand?.name ?? null,
-      image: {
-        src: String(firstImage?.src ?? ""),
-        alt: String(firstImage?.alt ?? product.name),
-      },
-    });
-  }
-
-  if (!lines.length) return { error: "Cart is empty." };
-  return { lines };
-}
 
 catalogRouter.get("/health", (_req, res) => {
   res.json({ ok: true, service: "bone-koboyi-backend" });
@@ -816,21 +694,6 @@ catalogRouter.get("/shared-carts/:token", async (req, res) => {
     },
   });
 });
-
-function normalizePaymentMethod(raw: unknown): "card" | "mtn" | "airtel" {
-  const value = String(raw ?? "")
-    .toLowerCase()
-    .trim();
-  if (value === "mtn" || value === "momo" || value === "mtn_momo") return "mtn";
-  if (value === "airtel" || value === "airtel_money") return "airtel";
-  return "card";
-}
-
-function paymentMethodLabel(method: "card" | "mtn" | "airtel") {
-  if (method === "mtn") return "MTN MoMo";
-  if (method === "airtel") return "Airtel Money";
-  return "Card";
-}
 
 /** Demo / no-Stripe completion of a shared cart payment. */
 catalogRouter.post("/shared-carts/:token/complete", async (req, res) => {

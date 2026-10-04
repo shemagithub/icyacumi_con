@@ -13,6 +13,8 @@ export function MediaImage({
   className = "",
   sizes,
   priority = false,
+  quality = 75,
+  draggable,
 }: {
   src: string;
   alt: string;
@@ -22,6 +24,9 @@ export function MediaImage({
   className?: string;
   sizes?: string;
   priority?: boolean;
+  /** Must match next.config images.qualities (60 | 75). */
+  quality?: 60 | 75;
+  draggable?: boolean;
 }) {
   if (isDataImageSrc(src)) {
     if (fill) {
@@ -30,6 +35,9 @@ export function MediaImage({
         <img
           src={src}
           alt={alt}
+          draggable={draggable}
+          decoding="async"
+          loading={priority ? "eager" : "lazy"}
           className={`absolute inset-0 h-full w-full ${className}`}
         />
       );
@@ -41,6 +49,9 @@ export function MediaImage({
         alt={alt}
         width={width}
         height={height}
+        draggable={draggable}
+        decoding="async"
+        loading={priority ? "eager" : "lazy"}
         className={className}
       />
     );
@@ -54,6 +65,8 @@ export function MediaImage({
         fill
         sizes={sizes}
         priority={priority}
+        quality={quality}
+        draggable={draggable}
         className={className}
       />
     );
@@ -67,6 +80,8 @@ export function MediaImage({
       height={height ?? 100}
       sizes={sizes}
       priority={priority}
+      quality={quality}
+      draggable={draggable}
       className={className}
     />
   );

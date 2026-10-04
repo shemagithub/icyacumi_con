@@ -13,7 +13,7 @@ const DEFAULTS: Record<
 > = {
   terms: {
     title: "Terms & Conditions",
-    body: `Welcome to BONE KOBOYI.
+    body: `Welcome to ICYACUMI.
 
 By creating an account or using our marketplace (shop, events, ads, and brand portal), you agree to these Terms & Conditions.
 
@@ -24,7 +24,7 @@ You must provide accurate information. You are responsible for keeping your logi
 Prices are shown in RWF unless stated otherwise. Orders are confirmed after successful payment. Delivery timelines are estimates and may vary by location and brand.
 
 3. Brands & listings
-Brand owners are responsible for the accuracy of their products, events, and ads. BONE KOBOYI may remove listings that violate marketplace rules or local law.
+Brand owners are responsible for the accuracy of their products, events, and ads. ICYACUMI may remove listings that violate marketplace rules or local law.
 
 4. Acceptable use
 Do not misuse the platform, attempt unauthorized access, or post harmful content.
@@ -32,11 +32,11 @@ Do not misuse the platform, attempt unauthorized access, or post harmful content
 5. Changes
 We may update these terms. Continued use after updates means you accept the revised terms.
 
-Contact fit@bonekoboyi.com with questions.`,
+Contact fit@icyacumi.com with questions.`,
   },
   privacy: {
     title: "Privacy Policy",
-    body: `BONE KOBOYI respects your privacy.
+    body: `ICYACUMI respects your privacy.
 
 1. What we collect
 Account details (name, email, phone, address), order history, and technical data needed to run the site (cookies/session).
@@ -56,7 +56,7 @@ You can update profile details in your account. Contact us to request account de
 6. Updates
 We may revise this policy; the latest version is always on this page.
 
-Contact fit@bonekoboyi.com for privacy requests.`,
+Contact fit@icyacumi.com for privacy requests.`,
   },
 };
 

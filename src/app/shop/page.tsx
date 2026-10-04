@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Container } from "@/components/container";
-import { CultureIcon, type CultureIconName } from "@/components/culture-icons";
 import { MarketplaceProductGrid } from "@/components/marketplace-product-grid";
+import { ShopDropNav } from "@/components/shop-drop-nav";
 import { ShopFilters } from "@/components/shop-filters";
 import { getVendors } from "@/lib/marketplace";
 import {
@@ -12,22 +12,18 @@ import {
   getProducts,
   parseFilters,
 } from "@/lib/products";
+import { buildPageMetadata } from "@/lib/seo";
 import { site } from "@/lib/site";
 
 type SearchParams = Record<string, string | string[] | undefined>;
 
-const DROP_ICONS: Record<string, CultureIconName> = {
-  "dust-season": "sun",
-  "rodeo-nights": "mask",
-  "bone-basics": "textile",
-};
-
 export async function generateMetadata(): Promise<Metadata> {
-  return {
+  return buildPageMetadata({
     title: "Shop",
-    description: `Season drops and brand floors on ${site.name}.`,
-    alternates: { canonical: "/shop" },
-  };
+    description: `Season drops and brand floors on ${site.name}. Filter by collection, brand, size, and colour.`,
+    path: "/shop",
+    keywords: ["shop", "fashion", "streetwear", site.name, site.madeIn],
+  });
 }
 
 export default async function ShopPage({
@@ -73,7 +69,7 @@ export default async function ShopPage({
       </header>
 
       <section className="mt-10">
-        <div className="flex flex-wrap items-end justify-between gap-3">
+        <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
           <p className="eyebrow">Season drops</p>
           <Link
             href="/brands"
@@ -82,39 +78,11 @@ export default async function ShopPage({
             Browse brands
           </Link>
         </div>
-        <ul className="mt-4 flex flex-wrap gap-2">
-          <li>
-            <Link
-              href="/shop"
-              className={`craft-chip px-3 py-2 text-xs tracking-[0.12em] uppercase ${
-                !filters.collection && !vendorId
-                  ? "craft-chip--active"
-                  : "craft-chip--idle"
-              }`}
-            >
-              All
-            </Link>
-          </li>
-          {collections.map((collection) => {
-            const active = filters.collection === collection.slug;
-            return (
-              <li key={collection.slug}>
-                <Link
-                  href={`/collections/${collection.slug}`}
-                  className={`craft-chip inline-flex items-center gap-2 px-3 py-2 text-xs tracking-[0.12em] uppercase ${
-                    active ? "craft-chip--active" : "craft-chip--idle"
-                  }`}
-                >
-                  <CultureIcon
-                    name={DROP_ICONS[collection.slug] ?? "textile"}
-                    className={`h-3.5 w-3.5 ${active ? "text-paint-yellow" : "text-rust"}`}
-                  />
-                  {collection.name}
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <ShopDropNav
+          collections={collections}
+          active={filters.collection ?? null}
+          showEyebrow={false}
+        />
       </section>
 
       {activeVendor ? (
@@ -141,7 +109,7 @@ export default async function ShopPage({
         />
       </div>
 
-      <div className="mt-12">
+      <div className="store-board mt-10">
         {products.length > 0 ? (
           <MarketplaceProductGrid
             seed={products}

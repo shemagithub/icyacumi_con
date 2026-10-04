@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
+import { CultureIcon } from "@/components/culture-icons";
 import type { PortalSession } from "@/lib/portal-auth";
 
 const TABS = [
@@ -98,9 +99,25 @@ export function PortalShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout } = useAuth();
+  const { logout, user } = useAuth();
   const [expanded, setExpanded] = useState(false);
   const [ready, setReady] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const menuId = useId();
+
+  const live: PortalSession =
+    user?.type === "brand"
+      ? {
+          type: "brand",
+          userId: user.userId,
+          brandId: user.brandId,
+          email: user.email,
+          name: user.name,
+          brandName: user.brandName,
+          brandSlug: user.brandSlug,
+        }
+      : session;
 
   useEffect(() => {
     try {
@@ -117,6 +134,26 @@ export function PortalShell({
     setExpanded(false);
   }, [pathname]);
 
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!menuRef.current?.contains(event.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMenuOpen(false);
+    };
+    window.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
   function toggleSidebar() {
     setExpanded((prev) => {
       const next = !prev;
@@ -129,12 +166,15 @@ export function PortalShell({
     });
   }
 
-  const initials = session.brandName
-    .split(" ")
-    .map((w) => w[0])
-    .join("")
-    .slice(0, 2)
-    .toUpperCase();
+  async function onLogout() {
+    setMenuOpen(false);
+    await logout();
+    router.push("/login?next=/portal");
+    router.refresh();
+  }
+
+  const brandInitial = (live.brandName.trim()[0] || "B").toUpperCase();
+  const userInitial = (live.name.trim()[0] || live.email[0] || "B").toUpperCase();
 
   return (
     <div className="portal-app fixed inset-0 z-[90] flex overflow-hidden bg-[var(--portal-bg)] font-sans text-[var(--portal-ink)]">
@@ -160,11 +200,11 @@ export function PortalShell({
             aria-label="Portal home"
           >
             <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white/20 text-xs">
-              BK
+              {brandInitial}
             </span>
             {expanded ? (
               <span className="truncate text-left text-xs font-semibold tracking-wide">
-                {session.brandName}
+                {live.brandName}
               </span>
             ) : null}
           </Link>
@@ -260,9 +300,7 @@ export function PortalShell({
               router.refresh();
             }}
           >
-            <svg className="h-5 w-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.8">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0 0 13.5 3h-6A2.25 2.25 0 0 0 5.25 5.25v13.5A2.25 2.25 0 0 0 7.5 21h6a2.25 2.25 0 0 0 2.25-2.25V15M12 9l3 3m0 0-3 3m3-3H3" />
-            </svg>
+            <CultureIcon name="logout" className="h-5 w-5 shrink-0" />
             {expanded ? <span className="text-sm font-medium">Log out</span> : null}
           </button>
         </div>
@@ -293,10 +331,10 @@ export function PortalShell({
 
           <div className="flex min-w-0 items-center gap-2.5">
             <span className="flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--portal-accent)] text-xs font-bold text-white">
-              F
+              {brandInitial}
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold tracking-tight">{session.brandName}</p>
+              <p className="truncate text-sm font-semibold tracking-tight">{live.brandName}</p>
               <p className="truncate text-[0.7rem] text-[var(--portal-muted)]">Brand portal</p>
             </div>
           </div>
@@ -332,12 +370,81 @@ export function PortalShell({
             >
               {expanded ? "Collapse" : "Expand"} menu
             </button>
-            <div className="hidden text-right sm:block">
-              <p className="text-sm font-semibold leading-tight">{session.name}</p>
-              <p className="text-[0.7rem] text-[var(--portal-muted)]">{session.email}</p>
-            </div>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--portal-ink)] text-xs font-bold text-white">
-              {initials}
+            <div ref={menuRef} className="relative">
+              <button
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                aria-controls={menuId}
+                onClick={() => setMenuOpen((value) => !value)}
+                className="flex items-center gap-2.5 rounded-full border border-black/10 bg-white py-1 pr-2 pl-1 transition-colors hover:border-[var(--portal-accent)]/40"
+              >
+                <div className="hidden text-right sm:block sm:pl-2">
+                  <p className="text-sm font-semibold leading-tight">{live.name}</p>
+                  <p className="text-[0.7rem] text-[var(--portal-muted)]">{live.email}</p>
+                </div>
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[var(--portal-ink)] text-xs font-bold text-white">
+                  {userInitial}
+                </div>
+              </button>
+
+              {menuOpen ? (
+                <div
+                  id={menuId}
+                  role="menu"
+                  className="absolute top-[calc(100%+0.45rem)] right-0 z-50 w-[15rem] overflow-hidden rounded-2xl border border-black/10 bg-white shadow-[0_16px_40px_rgba(17,17,17,0.14)]"
+                >
+                  <div className="border-b border-black/5 px-4 py-3 sm:hidden">
+                    <p className="truncate text-sm font-semibold">{live.name}</p>
+                    <p className="mt-0.5 truncate text-xs text-[var(--portal-muted)]">
+                      {live.email}
+                    </p>
+                  </div>
+                  <ul className="py-1">
+                    <li>
+                      <Link
+                        href="/portal/profile"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors hover:bg-black/5 ${
+                          pathname.startsWith("/portal/profile")
+                            ? "font-semibold text-[var(--portal-accent)]"
+                            : "text-[var(--portal-ink)]"
+                        }`}
+                      >
+                        <CultureIcon name="person" className="h-4 w-4 shrink-0" />
+                        Profile
+                      </Link>
+                    </li>
+                    <li>
+                      <Link
+                        href="/portal/sales"
+                        role="menuitem"
+                        onClick={() => setMenuOpen(false)}
+                        className={`flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors hover:bg-black/5 ${
+                          pathname.startsWith("/portal/sales")
+                            ? "font-semibold text-[var(--portal-accent)]"
+                            : "text-[var(--portal-ink)]"
+                        }`}
+                      >
+                        <CultureIcon name="spiral" className="h-4 w-4 shrink-0" />
+                        Orders
+                      </Link>
+                    </li>
+                  </ul>
+                  <div className="border-t border-black/5 p-2">
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => void onLogout()}
+                      className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-[var(--portal-accent)] hover:bg-orange-50"
+                    >
+                      <CultureIcon name="logout" className="h-4 w-4 shrink-0" />
+                      Log out
+                    </button>
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
         </header>

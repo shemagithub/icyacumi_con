@@ -1,20 +1,17 @@
+import { formatMoneyIntl } from "@/lib/intl";
 import { site } from "@/lib/site";
 
 /** Currencies Stripe treats as whole units (no cents). */
 const ZERO_DECIMAL = new Set(["RWF", "JPY", "KRW", "VND", "CLP"]);
 
 /**
- * Format money for display · always clear currency code + grouped amount.
- * Amounts are stored as whole RWF francs (no minor units).
+ * Format money for display · Intl currency code + locale grouping.
+ * Amounts are stored as whole RWF francs (no minor units) by default.
  */
 export function formatPrice(amount: number, currency: string = site.currency): string {
-  const zeroDecimal = ZERO_DECIMAL.has(currency);
-  const value = zeroDecimal ? Math.round(amount) : amount / 100;
-  const number = new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: zeroDecimal ? 0 : value % 1 === 0 ? 0 : 2,
-    maximumFractionDigits: zeroDecimal ? 0 : 2,
-  }).format(value);
-  return `${currency} ${number}`;
+  return formatMoneyIntl(amount, currency, {
+    zeroDecimal: ZERO_DECIMAL.has(currency.toUpperCase()),
+  });
 }
 
 /** Amount to send to Stripe Checkout (zero-decimal currencies stay as-is). */

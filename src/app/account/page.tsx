@@ -97,13 +97,15 @@ export default function AccountPage() {
             router.push("/");
             router.refresh();
           }}
-          className="text-xs tracking-[0.16em] text-bone-dim uppercase underline underline-offset-4 hover:text-rust"
+          className="inline-flex min-h-11 min-w-11 items-center justify-center text-bone-dim transition-colors hover:text-rust"
+          aria-label="Log out"
+          title="Log out"
         >
-          Log out
+          <CultureIcon name="logout" className="h-6 w-6" />
         </button>
       </div>
 
-      <div className="craft-panel mt-10 flex flex-wrap items-center gap-5 bg-bone/95 p-6">
+      <div className="store-board mt-10 flex flex-wrap items-center gap-5">
         <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-ash text-lg font-bold">
           {user.avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -131,12 +133,12 @@ export default function AccountPage() {
         </div>
       </div>
 
-      <ul className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         {LINKS.map((item) => (
           <li key={item.href}>
             <Link
               href={item.href}
-              className="craft-panel flex h-full flex-col gap-2 bg-bone/90 p-5 hover:bg-ash/40"
+              className="store-board flex h-full flex-col gap-2 transition-transform hover:-translate-y-0.5"
             >
               <CultureIcon name={item.icon} className="h-5 w-5 text-rust" />
               <span className="font-display text-xl tracking-[0.04em]">

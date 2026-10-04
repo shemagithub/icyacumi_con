@@ -11,5 +11,6 @@
     "rootDir": ".",
     "types": ["node"]
   },
-  "include": ["src/**/*", "prisma/seed.ts"]
+  "include": ["src/**/*"],
+  "exclude": ["dist", "node_modules", "prisma/seed.ts"]
 }

@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { CultureIcon } from "@/components/culture-icons";
 import { MediaImage } from "@/components/media-image";
+import { useSwipeNav } from "@/lib/use-swipe-nav";
 import type { ProductImage } from "@/lib/types";
 
 const SWIPE_THRESHOLD_PX = 48;
@@ -15,9 +16,33 @@ export function ProductGallery({ images }: { images: ProductImage[] }) {
   const [dragOffset, setDragOffset] = useState(0);
   const [dragging, setDragging] = useState(false);
   const dialogId = useId();
+  const previewRef = useRef<HTMLDivElement>(null);
   const touchStart = useRef<{ x: number; y: number; t: number } | null>(null);
   const current = images[active] ?? images[0];
   const hasMany = images.length > 1;
+
+  const goPrev = () =>
+    setActive((index) => (index - 1 + images.length) % images.length);
+  const goNext = () => setActive((index) => (index + 1) % images.length);
+
+  const { consumeSwipeClick } = useSwipeNav({
+    targetRef: previewRef,
+    enabled: hasMany && !fullscreen,
+    onNext: goNext,
+    onPrev: goPrev,
+  });
+
+  useEffect(() => {
+    const node = previewRef.current;
+    if (!node) return;
+    const onClickCapture = (event: MouseEvent) => {
+      if (!consumeSwipeClick()) return;
+      event.preventDefault();
+      event.stopPropagation();
+    };
+    node.addEventListener("click", onClickCapture, true);
+    return () => node.removeEventListener("click", onClickCapture, true);
+  }, [consumeSwipeClick]);
 
   useEffect(() => {
     setMounted(true);
@@ -64,10 +89,6 @@ export function ProductGallery({ images }: { images: ProductImage[] }) {
   };
 
   const closeFullscreen = () => setFullscreen(false);
-
-  const goPrev = () =>
-    setActive((index) => (index - 1 + images.length) % images.length);
-  const goNext = () => setActive((index) => (index + 1) % images.length);
 
   function onTouchStart(event: React.TouchEvent) {
     if (!hasMany || event.touches.length !== 1) return;
@@ -209,11 +230,6 @@ export function ProductGallery({ images }: { images: ProductImage[] }) {
                       draggable={false}
                     />
                   </div>
-                  {hasMany ? (
-                    <p className="pointer-events-none mt-3 text-center font-sans text-[0.6rem] tracking-[0.16em] text-bone/55 uppercase sm:hidden">
-                      Swipe left or right
-                    </p>
-                  ) : null}
                 </div>
 
                 {hasMany && (
@@ -264,27 +280,30 @@ export function ProductGallery({ images }: { images: ProductImage[] }) {
 
   return (
     <div>
-      <button
-        type="button"
-        onClick={() => openFullscreen()}
-        className="craft-frame craft-frame--soft group relative aspect-[4/5] w-full cursor-zoom-in overflow-hidden bg-ash text-left"
-        aria-label="View image full screen"
-      >
-        <MediaImage
-          src={current.src}
-          alt={current.alt}
-          fill
-          priority
-          sizes="(min-width: 1024px) 55vw, 100vw"
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
-        />
-        <span className="craft-btn pointer-events-none absolute right-3 bottom-3 inline-flex items-center gap-1.5 bg-bone/95 px-3 py-2 text-coal shadow-sm opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
-          <CultureIcon name="mask" className="h-4 w-4 text-rust" />
-          <span className="font-sans text-[0.6rem] font-bold tracking-[0.16em] uppercase">
-            Full view
+      <div ref={previewRef} className="touch-pan-y">
+        <button
+          type="button"
+          onClick={() => openFullscreen()}
+          className="craft-frame craft-frame--soft group relative aspect-[4/5] w-full cursor-zoom-in overflow-hidden bg-ash text-left"
+          aria-label="View image full screen"
+        >
+          <MediaImage
+            src={current.src}
+            alt={current.alt}
+            fill
+            priority
+            sizes="(min-width: 1024px) 55vw, 100vw"
+            className="pointer-events-none object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+            draggable={false}
+          />
+          <span className="craft-btn pointer-events-none absolute right-3 bottom-3 inline-flex items-center gap-1.5 bg-bone/95 px-3 py-2 text-coal shadow-sm opacity-100 transition-opacity sm:opacity-0 sm:group-hover:opacity-100">
+            <CultureIcon name="mask" className="h-4 w-4 text-rust" />
+            <span className="font-sans text-[0.6rem] font-bold tracking-[0.16em] uppercase">
+              Full view
+            </span>
           </span>
-        </span>
-      </button>
+        </button>
+      </div>
 
       {hasMany && (
         <div className="mt-3 flex gap-3 overflow-x-auto pb-1">

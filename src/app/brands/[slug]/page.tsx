@@ -1,14 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { BrandCatalogTabs } from "@/components/brand-catalog-tabs";
 import { BrandProfileCard } from "@/components/brand-profile-card";
 import { Container } from "@/components/container";
-import { MarketplaceProductGrid } from "@/components/marketplace-product-grid";
+import { JsonLd } from "@/components/json-ld";
 import { getVendorBySlug, getVendors } from "@/lib/marketplace";
 import { getProductsByVendor } from "@/lib/products";
+import {
+  brandJsonLd,
+  breadcrumbJsonLd,
+  buildPageMetadata,
+  collectionPageJsonLd,
+} from "@/lib/seo";
 import { site } from "@/lib/site";
 
 type Params = Promise<{ slug: string }>;
+type SearchParams = Promise<{ tab?: string | string[] }>;
 
 export async function generateStaticParams() {
   const vendors = await getVendors();
@@ -23,14 +31,31 @@ export async function generateMetadata({
   const { slug } = await params;
   const vendor = await getVendorBySlug(slug);
   if (!vendor) return { title: "Brand" };
-  return {
+  return buildPageMetadata({
     title: vendor.name,
-    description: vendor.shortBio,
-  };
+    description: `${vendor.shortBio} · ${vendor.location} · on ${site.name}`,
+    path: `/brands/${vendor.slug}`,
+    keywords: [
+      vendor.name,
+      vendor.location,
+      "African brand",
+      site.name,
+      site.madeIn,
+      "marketplace",
+    ],
+  });
 }
 
-export default async function BrandPage({ params }: { params: Params }) {
+export default async function BrandPage({
+  params,
+  searchParams,
+}: {
+  params: Params;
+  searchParams: SearchParams;
+}) {
   const { slug } = await params;
+  const query = await searchParams;
+  const tab = Array.isArray(query.tab) ? query.tab[0] : query.tab;
   const vendor = await getVendorBySlug(slug);
   if (!vendor) notFound();
 
@@ -39,6 +64,31 @@ export default async function BrandPage({ params }: { params: Params }) {
 
   return (
     <Container className="py-10 lg:py-14">
+      <JsonLd
+        data={[
+          breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "Brands", path: "/brands" },
+            { name: vendor.name, path: `/brands/${vendor.slug}` },
+          ]),
+          brandJsonLd({
+            name: vendor.name,
+            description: vendor.shortBio,
+            slug: vendor.slug,
+            location: vendor.location,
+          }),
+          collectionPageJsonLd({
+            name: `${vendor.name} on ${site.name}`,
+            description: vendor.shortBio,
+            path: `/brands/${vendor.slug}`,
+            items: products.slice(0, 24).map((product) => ({
+              name: product.name,
+              path: `/shop/${product.slug}`,
+            })),
+          }),
+        ]}
+      />
+
       <nav className="text-xs tracking-[0.14em] text-bone-dim uppercase">
         <Link href="/brands" className="hover:text-rust">
           Brands
@@ -61,38 +111,13 @@ export default async function BrandPage({ params }: { params: Params }) {
         </p>
       </div>
 
-      <section className="mt-12">
-        <div className="mb-6 flex flex-wrap items-end justify-between gap-3 border-b border-ash-line pb-4">
-          <div>
-            <p className="eyebrow">Catalog</p>
-            <h2 className="font-display mt-1 text-3xl tracking-[0.04em]">
-              All {vendor.name} products
-            </h2>
-          </div>
-          <Link
-            href="/shop"
-            className="text-xs tracking-[0.14em] text-bone-dim uppercase underline-offset-4 hover:text-rust hover:underline"
-          >
-            Browse all brands
-          </Link>
-        </div>
-
-        {count > 0 ? (
-          <MarketplaceProductGrid
-            seed={products}
-            sort="views"
-            vendorId={vendor.id}
-            priorityCount={4}
-          />
-        ) : (
-          <div className="craft-panel bg-bone/80 px-6 py-16 text-center">
-            <p className="font-display text-2xl tracking-[0.05em]">No products yet</p>
-            <p className="mt-2 text-sm text-bone-dim">
-              This brand has not uploaded products to the shop.
-            </p>
-          </div>
-        )}
-      </section>
+      <BrandCatalogTabs
+        brandName={vendor.name}
+        brandSlug={vendor.slug}
+        vendorId={vendor.id}
+        products={products}
+        tab={tab}
+      />
     </Container>
   );
 }

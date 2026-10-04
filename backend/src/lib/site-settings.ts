@@ -1,4 +1,5 @@
 import { prisma } from "./db.js";
+import { defaultSiteTheme, parseThemeJson, type SiteTheme } from "./site-theme.js";
 
 export const SITE_SETTINGS_ID = "default";
 
@@ -28,24 +29,25 @@ export type SiteSettingsDto = {
   twitter: string | null;
   youtube: string | null;
   website: string | null;
+  theme: SiteTheme;
   social: Array<{ href: string; label: string }>;
   updatedAt: string;
 };
 
 const DEFAULTS = {
-  companyName: "BONE KOBOYI",
+  companyName: "ICYACUMI",
   shortName: "BK",
-  displayName: "BONE_KOBOYI",
+  displayName: "ICYACUMI",
   tagline: "Shop. Events. Ads.",
   madeIn: "MADE IN AFREEKA",
-  email: "fit@bonekoboyi.com",
+  email: "fit@icyacumi.com",
   phone: null as string | null,
   logoUrl: "/brand/logo.png",
-  logoAlt: "BONE KOBOYI / MADE IN AFREEKA mark",
+  logoAlt: "ICYACUMI / MADE IN AFREEKA mark",
   positioning:
     "Shop products, book event tickets, and run ads · MADE IN AFREEKA, all in one place.",
   aboutBody:
-    "BONE KOBOYI designs contemporary luxury streetwear from African craft languages and modern cultural experimentation · Imigongo geometry, ceremonial marks, hand-finished surfaces. Not costume. Not nostalgia. A way of seeing.",
+    "ICYACUMI designs contemporary luxury streetwear from African craft languages and modern cultural experimentation · Imigongo geometry, ceremonial marks, hand-finished surfaces. Not costume. Not nostalgia. A way of seeing.",
   aboutHeroImageUrl: "/scenes/editorial-ranch.jpg",
   pillarArtTitle: "Art",
   pillarArtBody:
@@ -119,6 +121,7 @@ function mapRow(row: {
   twitter: string | null;
   youtube: string | null;
   website: string | null;
+  themeJson?: string | null;
   updatedAt: Date;
 }): SiteSettingsDto {
   return {
@@ -147,6 +150,7 @@ function mapRow(row: {
     twitter: row.twitter,
     youtube: row.youtube,
     website: row.website,
+    theme: parseThemeJson(row.themeJson),
     social: buildSocial(row),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -172,6 +176,7 @@ export async function getSiteSettings(): Promise<SiteSettingsDto> {
     return {
       id: SITE_SETTINGS_ID,
       ...DEFAULTS,
+      theme: defaultSiteTheme,
       social: buildSocial(DEFAULTS),
       updatedAt: new Date().toISOString(),
     };
@@ -204,6 +209,7 @@ export type SiteSettingsPatch = Partial<{
   twitter: string | null;
   youtube: string | null;
   website: string | null;
+  theme: SiteTheme;
 }>;
 
 export function parseSiteSettingsPatch(body: Record<string, unknown>): {
@@ -300,6 +306,7 @@ export function parseSiteSettingsPatch(body: Record<string, unknown>): {
   if (body.twitter !== undefined) data.twitter = trimOrNull(body.twitter);
   if (body.youtube !== undefined) data.youtube = trimOrNull(body.youtube);
   if (body.website !== undefined) data.website = trimOrNull(body.website);
+  if (body.theme !== undefined) data.theme = parseThemeJson(body.theme);
 
   if (!Object.keys(data).length) {
     return { error: "No changes provided." };
@@ -309,9 +316,13 @@ export function parseSiteSettingsPatch(body: Record<string, unknown>): {
 
 export async function updateSiteSettings(patch: SiteSettingsPatch) {
   await ensureSiteSettings();
+  const { theme, ...rest } = patch;
   const row = await prisma.siteSettings.update({
     where: { id: SITE_SETTINGS_ID },
-    data: patch,
+    data: {
+      ...rest,
+      ...(theme ? { themeJson: JSON.stringify(theme) } : {}),
+    },
   });
   return mapRow(row);
 }

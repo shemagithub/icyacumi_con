@@ -2,17 +2,23 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useAuth } from "@/components/auth-provider";
 import { useCart } from "@/components/cart-provider";
 import { ShareCartButton } from "@/components/share-cart-button";
+import { loginHref } from "@/lib/auth-redirect";
 import { formatPrice } from "@/lib/format";
 import { site } from "@/lib/site";
 
 export function CartContents() {
   const { lines, subtotal, hydrated, updateQuantity, removeLine } = useCart();
+  const { user } = useAuth();
 
   const shipping =
     lines.length === 0 || subtotal >= site.freeShippingThreshold ? 0 : site.shippingRate;
   const total = subtotal + shipping;
+  const checkoutHref = user?.type === "client" ? "/checkout" : loginHref("/checkout");
+  const checkoutLabel =
+    user?.type === "client" ? "Proceed to checkout" : "Sign in to checkout";
 
   if (!hydrated) {
     return (
@@ -154,11 +160,17 @@ export function CartContents() {
         )}
 
         <Link
-          href="/checkout"
+          href={checkoutHref}
           className="craft-btn block w-full bg-rust px-6 py-4 text-center text-xs tracking-[0.2em] text-bone uppercase transition-colors hover:bg-sand"
         >
-          Proceed to checkout
+          {checkoutLabel}
         </Link>
+
+        {user?.type !== "client" ? (
+          <p className="mt-3 text-center text-xs text-bone-dim">
+            Your bag is saved on this device. Sign in when you&rsquo;re ready to pay.
+          </p>
+        ) : null}
 
         <ShareCartButton />
 

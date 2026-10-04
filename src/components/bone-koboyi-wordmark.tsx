@@ -1,5 +1,5 @@
 /**
- * BONE KOBOYI wordmark in the brand's tribal-geometric letter style
+ * ICYACUMI wordmark in the brand's tribal-geometric letter style
  * (gold / ink / maroon), matching the custom alphabet sheet.
  */
 
@@ -146,7 +146,7 @@ function Separator({ x, strokeWidth }: { x: number; strokeWidth: number }) {
 
 export function BoneKoboyiWordmark({
   className = "",
-  title = "BONE KOBOYI",
+  title = "ICYACUMI",
   bold = false,
 }: {
   className?: string;

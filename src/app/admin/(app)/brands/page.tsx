@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminPagination } from "@/components/admin-pagination";
 import { ExportPdfButton } from "@/components/export-pdf-button";
+import { kycDocKind } from "@/lib/kyc-docs";
 import { usePagination } from "@/lib/pagination";
 
 type BrandRow = {
@@ -17,6 +18,9 @@ type BrandRow = {
   contactPhone: string | null;
   rejectedReason: string | null;
   createdAt?: string;
+  kycIdReady?: boolean;
+  kycRdbReady?: boolean;
+  kycSubmittedAt?: string | null;
   _count: { products: number; events: number; ads: number; users: number };
   users: Array<{
     id: string;
@@ -25,6 +29,61 @@ type BrandRow = {
     emailVerifiedAt?: string | null;
   }>;
 };
+
+type KycPayload = {
+  id: string;
+  name: string;
+  kycSubmittedAt: string | null;
+  kycIdDocument: string | null;
+  kycRdbCertificate: string | null;
+};
+
+function kycComplete(brand: BrandRow) {
+  return Boolean(brand.kycIdReady && brand.kycRdbReady);
+}
+
+function KycPreview({
+  label,
+  dataUrl,
+}: {
+  label: string;
+  dataUrl: string | null;
+}) {
+  const kind = kycDocKind(dataUrl);
+  return (
+    <div className="space-y-2">
+      <p className="text-xs font-semibold uppercase tracking-wide text-[var(--portal-muted)]">
+        {label}
+      </p>
+      {!dataUrl || !kind ? (
+        <p className="text-sm text-[var(--portal-accent)]">Missing</p>
+      ) : kind === "image" ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={dataUrl}
+          alt={label}
+          className="max-h-64 w-full rounded-xl border border-[var(--portal-line)] object-contain bg-white"
+        />
+      ) : (
+        <div className="space-y-2">
+          <iframe
+            title={label}
+            src={dataUrl}
+            className="h-64 w-full rounded-xl border border-[var(--portal-line)] bg-white"
+          />
+          <a
+            href={dataUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-medium text-[var(--portal-accent)] underline"
+          >
+            Open PDF in new tab
+          </a>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AdminBrandsPage() {
   const [brands, setBrands] = useState<BrandRow[]>([]);
@@ -35,6 +94,8 @@ export default function AdminBrandsPage() {
     "all",
   );
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [kycView, setKycView] = useState<KycPayload | null>(null);
+  const [kycLoadingId, setKycLoadingId] = useState<string | null>(null);
 
   const filtered = useMemo(() => {
     if (filter === "all") return brands;
@@ -88,10 +149,36 @@ export default function AdminBrandsPage() {
     await load();
   }
 
+  async function viewKyc(brand: BrandRow) {
+    setKycLoadingId(brand.id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/admin/brands/${brand.id}/kyc`, {
+        credentials: "include",
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error ?? "Could not load KYC documents.");
+        return;
+      }
+      setKycView(data.brand ?? null);
+    } catch {
+      setError("Could not reach the server.");
+    } finally {
+      setKycLoadingId(null);
+    }
+  }
+
   async function setStatus(
     brand: BrandRow,
     status: "approved" | "rejected" | "pending",
   ) {
+    if (status === "approved" && !kycComplete(brand)) {
+      setError(
+        "Cannot approve yet — national ID and RDB certificate KYC docs are missing.",
+      );
+      return;
+    }
     let rejectedReason: string | null = null;
     if (status === "rejected") {
       rejectedReason =
@@ -113,7 +200,11 @@ export default function AdminBrandsPage() {
         setError(data.error ?? "Could not update status.");
         return;
       }
-      setMessage(`${brand.name} marked ${status}.`);
+      setMessage(
+        status === "approved"
+          ? `${brand.name} approved · confirmation email sent to the owner.`
+          : `${brand.name} marked ${status}.`,
+      );
       await load();
     } catch {
       setError("Could not reach the server.");
@@ -185,6 +276,32 @@ export default function AdminBrandsPage() {
         </p>
       ) : null}
 
+      {kycView ? (
+        <div className="portal-card space-y-4 p-5">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-semibold">KYC · {kycView.name}</h2>
+              <p className="mt-1 text-xs text-[var(--portal-muted)]">
+                {kycView.kycSubmittedAt
+                  ? `Submitted ${new Date(kycView.kycSubmittedAt).toLocaleString()}`
+                  : "No submission timestamp"}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setKycView(null)}
+              className="portal-btn portal-btn--ghost !py-1.5 !text-xs"
+            >
+              Close
+            </button>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <KycPreview label="National ID / passport" dataUrl={kycView.kycIdDocument} />
+            <KycPreview label="RDB certificate" dataUrl={kycView.kycRdbCertificate} />
+          </div>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-1">
         {(
           [
@@ -254,6 +371,7 @@ export default function AdminBrandsPage() {
           <ul className="divide-y divide-[var(--portal-line)]">
             {pagination.items.map((brand) => {
               const busy = busyId === brand.id;
+              const ready = kycComplete(brand);
               return (
                 <li
                   key={brand.id}
@@ -272,6 +390,15 @@ export default function AdminBrandsPage() {
                         }`}
                       >
                         {brand.status}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide ${
+                          ready
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-orange-50 text-[var(--portal-accent)]"
+                        }`}
+                      >
+                        KYC {ready ? "ready" : "incomplete"}
                       </span>
                     </div>
                     <p className="text-xs text-[var(--portal-muted)]">
@@ -297,12 +424,37 @@ export default function AdminBrandsPage() {
                           .join(" · ")}
                       </p>
                     ) : null}
+                    <p className="mt-1 text-xs text-[var(--portal-muted)]">
+                      KYC: ID {brand.kycIdReady ? "✓" : "—"} · RDB{" "}
+                      {brand.kycRdbReady ? "✓" : "—"}
+                      {brand.kycSubmittedAt
+                        ? ` · ${new Date(brand.kycSubmittedAt).toLocaleDateString()}`
+                        : ""}
+                    </p>
+                    {!ready && brand.status !== "approved" ? (
+                      <p className="mt-1 text-xs text-[var(--portal-accent)]">
+                        Approve disabled until both KYC documents are on file.
+                      </p>
+                    ) : null}
                   </div>
                   <div className="flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      disabled={kycLoadingId === brand.id}
+                      onClick={() => void viewKyc(brand)}
+                      className="portal-btn portal-btn--ghost !py-2 !text-xs disabled:opacity-60"
+                    >
+                      {kycLoadingId === brand.id ? "Loading…" : "View KYC"}
+                    </button>
                     {brand.status !== "approved" ? (
                       <button
                         type="button"
-                        disabled={busy}
+                        disabled={busy || !ready}
+                        title={
+                          ready
+                            ? undefined
+                            : "National ID and RDB certificate required before approval"
+                        }
                         onClick={() => void setStatus(brand, "approved")}
                         className="portal-btn portal-btn--accent !py-2 !text-xs disabled:opacity-60"
                       >

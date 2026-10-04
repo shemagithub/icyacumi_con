@@ -1,6 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { CultureIcon } from "@/components/culture-icons";
+import { CreditsList } from "@/components/credits-list";
 import type { AdCreative } from "@/lib/types";
 
 export function AdsBoard({ seed }: { seed: AdCreative[] }) {
@@ -32,6 +33,7 @@ export function AdsBoard({ seed }: { seed: AdCreative[] }) {
             <p className="eyebrow">{ad.brand}</p>
             <h2 className="font-display mt-2 text-2xl tracking-[0.04em]">{ad.title}</h2>
             <p className="mt-2 text-sm text-bone-dim">{ad.summary}</p>
+            <CreditsList credits={ad.credits} title="Credits" compact />
             <div className="mt-5 flex flex-wrap items-center gap-3">
               <Link
                 href={ad.ctaHref}

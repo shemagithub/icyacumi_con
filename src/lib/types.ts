@@ -25,6 +25,13 @@ export interface ProductImage {
   alt: string;
 }
 
+/** Someone who worked a product, event, or ad · public shout-out. */
+export interface Credit {
+  role: string;
+  name: string;
+  url?: string;
+}
+
 export interface Vendor {
   id: string;
   slug: string;
@@ -76,6 +83,10 @@ export interface Product {
   views: number;
   /** ISO timestamp when available · used for newest sort. */
   createdAt?: string;
+  /** ISO timestamp when the product last changed · used for recent promos. */
+  updatedAt?: string;
+  /** People to shout out on the product page. */
+  credits?: Credit[];
 }
 
 export interface Category {
@@ -123,6 +134,7 @@ export interface MarketEvent {
   ticketsLeft: number;
   image: ProductImage;
   vendorIds: string[];
+  credits?: Credit[];
 }
 
 export interface AdCreative {
@@ -138,6 +150,7 @@ export interface AdCreative {
   ctaHref: string;
   ctaLabel: string;
   featured?: boolean;
+  credits?: Credit[];
 }
 
 /** A line in the cart. */

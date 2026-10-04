@@ -3,9 +3,12 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminPagination } from "@/components/admin-pagination";
+import { CreditsEditor } from "@/components/credits-editor";
 import { ExportPdfButton } from "@/components/export-pdf-button";
+import { parseCredits } from "@/lib/credits";
 import { formatPrice } from "@/lib/format";
 import { usePagination } from "@/lib/pagination";
+import type { Credit } from "@/lib/types";
 
 type BrandOption = { id: string; name: string; slug: string };
 
@@ -24,6 +27,7 @@ type EventRow = {
   imageSrc: string;
   brandId: string;
   brand: { id: string; name: string; slug: string };
+  credits?: Credit[];
 };
 
 const EMPTY_FORM = {
@@ -38,6 +42,7 @@ const EMPTY_FORM = {
   capacity: "100",
   ticketsLeft: "",
   imageSrc: "/editorial/look-01.png",
+  credits: [] as Credit[],
 };
 
 export default function AdminEventsPage() {
@@ -101,6 +106,7 @@ export default function AdminEventsPage() {
       capacity: String(item.capacity),
       ticketsLeft: String(item.ticketsLeft),
       imageSrc: item.imageSrc || "/editorial/look-01.png",
+      credits: item.credits ?? [],
     });
     setMessage(null);
     setError(null);
@@ -126,6 +132,7 @@ export default function AdminEventsPage() {
           ? Number(form.capacity)
           : Number(form.ticketsLeft),
       imageSrc: form.imageSrc,
+      credits: parseCredits(form.credits),
     };
 
     try {
@@ -388,6 +395,11 @@ export default function AdminEventsPage() {
               />
             </label>
           </div>
+
+          <CreditsEditor
+            value={form.credits}
+            onChange={(credits) => setForm((prev) => ({ ...prev, credits }))}
+          />
 
           <label className="block">
             <span className="mb-1.5 block text-xs text-[var(--portal-muted)]">

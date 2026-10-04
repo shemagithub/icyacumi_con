@@ -25,10 +25,15 @@ interface PaymentsPayload {
     paidOut: number;
     pending: number;
     available: number;
+    feesPaid?: number;
+    withdrawalFee?: number;
+    minWithdrawal?: number;
+    maxReceivable?: number;
   };
   payouts: Array<{
     id: string;
     amount: number;
+    feeAmount?: number;
     status: string;
     note: string | null;
     createdAt: string;
@@ -112,7 +117,11 @@ export default function PortalPaymentsPage() {
       setError(json.error ?? "Payout failed");
       return;
     }
-    setMessage("Payout requested. Super admin will review and send your money.");
+    setMessage(
+      json.feeAmount
+        ? `Payout requested · you receive ${formatPrice(json.youReceive ?? json.payout?.amount ?? 0)}; ${formatPrice(json.feeAmount)} fee taken from earnings.`
+        : "Payout requested. Super admin will review and send your money.",
+    );
     setAmount("");
     await load();
   }
@@ -124,6 +133,15 @@ export default function PortalPaymentsPage() {
   }
 
   const available = data.summary.available;
+  const withdrawalFee = data.summary.withdrawalFee ?? 350;
+  const minWithdrawal = data.summary.minWithdrawal ?? 100;
+  const maxReceivable =
+    data.summary.maxReceivable ??
+    Math.max(0, available >= withdrawalFee + minWithdrawal ? available - withdrawalFee : 0);
+  const requestedNet = Math.max(0, Math.round(Number(amount) || 0));
+  const previewDebit =
+    requestedNet > 0 ? requestedNet + withdrawalFee : withdrawalFee;
+  const canWithdraw = maxReceivable >= minWithdrawal;
 
   return (
     <div className="space-y-6">
@@ -131,8 +149,8 @@ export default function PortalPaymentsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Earnings & payouts</h1>
           <p className="mt-1 text-sm text-[var(--portal-muted)]">
-            Balance from real paid orders (same as Sales). Withdraw to MoMo, Airtel, or bank -
-            admin reviews each request.
+            Balance from real paid orders (same as Sales). Each withdrawal takes a flat{" "}
+            {formatPrice(withdrawalFee)} fee from your earnings · admin reviews each request.
           </p>
         </div>
         <Link href="/portal/sales" className="portal-btn portal-btn--ghost">
@@ -160,13 +178,20 @@ export default function PortalPaymentsPage() {
             {formatPrice(data.summary.paidOut)} · Pending{" "}
             {formatPrice(data.summary.pending)}
           </p>
+          <p className="mt-2 text-xs text-[var(--portal-muted)]">
+            Withdrawal fee {formatPrice(withdrawalFee)} per request · max you can receive{" "}
+            {formatPrice(maxReceivable)}
+            {data.summary.feesPaid ? (
+              <> · fees so far {formatPrice(data.summary.feesPaid)}</>
+            ) : null}
+          </p>
           <button
             type="button"
             className="portal-btn portal-btn--ghost mt-4 !py-2 !text-xs"
-            onClick={() => setAmount(String(available || ""))}
-            disabled={available < 100}
+            onClick={() => setAmount(String(maxReceivable || ""))}
+            disabled={!canWithdraw}
           >
-            Use full available
+            Use max receivable
           </button>
         </div>
           <div className="grid grid-cols-2 gap-3">
@@ -249,20 +274,45 @@ export default function PortalPaymentsPage() {
         <form onSubmit={requestPayout} className="portal-card space-y-3 p-5 sm:p-6">
           <h2 className="text-sm font-semibold">Withdraw earnings</h2>
           <p className="text-xs text-[var(--portal-muted)]">
-            Max {formatPrice(available)}. Minimum RWF 100.
+            Enter how much you want to <strong>receive</strong>. A flat{" "}
+            {formatPrice(withdrawalFee)} fee is taken from your available balance.
+            Max receive {formatPrice(maxReceivable)} · minimum{" "}
+            {formatPrice(minWithdrawal)}.
           </p>
           <input
             name="amount"
             type="number"
             required
-            min={100}
-            max={available || undefined}
+            min={minWithdrawal}
+            max={maxReceivable || undefined}
             step={1}
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            placeholder="Amount RWF"
+            placeholder="Amount you receive (RWF)"
             className="portal-input"
           />
+          {requestedNet > 0 ? (
+            <div className="rounded-2xl bg-[var(--portal-bg)] px-4 py-3 text-xs text-[var(--portal-muted)]">
+              <p>
+                You receive:{" "}
+                <strong className="text-[var(--portal-ink,#111)]">
+                  {formatPrice(requestedNet)}
+                </strong>
+              </p>
+              <p className="mt-1">
+                Withdrawal fee:{" "}
+                <strong className="text-[var(--portal-ink,#111)]">
+                  {formatPrice(withdrawalFee)}
+                </strong>
+              </p>
+              <p className="mt-1">
+                Taken from earnings:{" "}
+                <strong className="text-[var(--portal-ink,#111)]">
+                  {formatPrice(previewDebit)}
+                </strong>
+              </p>
+            </div>
+          ) : null}
           <select
             name="payoutProvider"
             className="portal-input appearance-none"
@@ -283,7 +333,7 @@ export default function PortalPaymentsPage() {
           <input name="note" placeholder="Note (optional)" className="portal-input" />
           <button
             type="submit"
-            disabled={available < 100}
+            disabled={!canWithdraw}
             className="portal-btn portal-btn--accent w-full disabled:opacity-60"
           >
             Request payout
@@ -300,7 +350,8 @@ export default function PortalPaymentsPage() {
           <table className="w-full min-w-[28rem] text-left text-sm">
             <thead>
               <tr className="text-xs text-[var(--portal-muted)]">
-                <th className="px-5 py-3 font-medium">Amount</th>
+                <th className="px-5 py-3 font-medium">You receive</th>
+                <th className="px-3 py-3 font-medium">Fee</th>
                 <th className="px-3 py-3 font-medium">Status</th>
                 <th className="px-3 py-3 font-medium">Note</th>
                 <th className="px-5 py-3 font-medium">Date</th>
@@ -311,6 +362,9 @@ export default function PortalPaymentsPage() {
                 <tr key={payout.id} className="border-t border-[var(--portal-line)]">
                   <td className="px-5 py-3.5 font-semibold tabular-nums">
                     {formatPrice(payout.amount)}
+                  </td>
+                  <td className="px-3 py-3.5 tabular-nums text-[var(--portal-muted)]">
+                    {formatPrice(payout.feeAmount ?? 0)}
                   </td>
                   <td className="px-3 py-3.5">
                     <span className={`portal-badge portal-badge--${statusTone(payout.status)}`}>
@@ -327,7 +381,7 @@ export default function PortalPaymentsPage() {
               ))}
               {payouts.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="px-5 py-10 text-sm text-[var(--portal-muted)]">
+                  <td colSpan={5} className="px-5 py-10 text-sm text-[var(--portal-muted)]">
                     No payouts yet · withdraw when you have available earnings.
                   </td>
                 </tr>

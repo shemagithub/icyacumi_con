@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { makeLineId, useCart } from "@/components/cart-provider";
@@ -30,7 +30,6 @@ export function AddToCartForm({ product }: { product: Product }) {
   const { lines, toggleLine, hydrated } = useCart();
   const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const onlyOneSize = product.sizes.length === 1;
 
   const [size, setSize] = useState<Size | null>(onlyOneSize ? product.sizes[0] : null);
@@ -57,14 +56,18 @@ export function AddToCartForm({ product }: { product: Product }) {
     resetTimer.current = setTimeout(() => setMessage(null), 2800);
   }
 
-  function requireClient(): boolean {
+  function requireClientForCheckout(): boolean {
     if (loading) return false;
     if (!user) {
-      router.push(loginHref(pathname));
+      router.push(loginHref("/checkout"));
       return false;
     }
     if (user.type === "brand") {
       router.push("/portal");
+      return false;
+    }
+    if (user.type === "admin") {
+      router.push("/admin");
       return false;
     }
     return true;
@@ -72,7 +75,15 @@ export function AddToCartForm({ product }: { product: Product }) {
 
   function handleToggleBag(event: React.FormEvent) {
     event.preventDefault();
-    if (!requireClient()) return;
+    if (loading) return;
+    if (user?.type === "brand") {
+      router.push("/portal");
+      return;
+    }
+    if (user?.type === "admin") {
+      router.push("/admin");
+      return;
+    }
     if (!size) {
       setError("Choose a size first.");
       return;
@@ -84,13 +95,13 @@ export function AddToCartForm({ product }: { product: Product }) {
   }
 
   function handleBuyNow() {
-    if (!requireClient()) return;
     if (!size) {
       setError("Choose a size first.");
       return;
     }
     setError(null);
     saveBuyNowLines([buildLine(product, size, color)]);
+    if (!requireClientForCheckout()) return;
     router.push("/checkout");
   }
 
@@ -106,9 +117,8 @@ export function AddToCartForm({ product }: { product: Product }) {
     );
   }
 
-  const bagLabel = !user
-    ? "Log in to add"
-    : user.type === "brand"
+  const bagLabel =
+    user?.type === "brand"
       ? "Use brand portal"
       : inBag
         ? "Remove from bag"
@@ -177,7 +187,7 @@ export function AddToCartForm({ product }: { product: Product }) {
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
         <button
           type="submit"
-          disabled={loading}
+          disabled={loading || user?.type === "brand" || user?.type === "admin"}
           aria-pressed={inBag}
           className={`craft-btn flex-1 px-6 py-4 text-xs tracking-[0.2em] uppercase transition-colors disabled:opacity-60 ${
             inBag
@@ -189,33 +199,24 @@ export function AddToCartForm({ product }: { product: Product }) {
         </button>
         <button
           type="button"
-          disabled={loading || user?.type === "brand"}
+          disabled={loading || user?.type === "brand" || user?.type === "admin"}
           onClick={handleBuyNow}
           className="craft-btn-ghost flex-1 bg-bone px-6 py-4 text-xs tracking-[0.2em] text-coal uppercase transition-colors hover:text-rust disabled:opacity-60"
         >
           {!user
-            ? `Log in to buy · ${formatPrice(product.price)}`
+            ? `Sign in to buy · ${formatPrice(product.price)}`
             : user.type === "brand"
               ? "Use brand portal"
               : `Buy now · ${formatPrice(product.price)}`}
         </button>
       </div>
 
-      {user?.type === "client" ? (
-        <Link
-          href="/cart"
-          className="mt-4 inline-block text-xs tracking-[0.16em] text-bone-dim uppercase underline underline-offset-4 hover:text-rust"
-        >
-          {inBag ? "View bag" : "Open bag"}
-        </Link>
-      ) : (
-        <Link
-          href={loginHref(pathname)}
-          className="mt-4 inline-block text-xs tracking-[0.16em] text-bone-dim uppercase underline underline-offset-4 hover:text-rust"
-        >
-          Create / log in
-        </Link>
-      )}
+      <Link
+        href="/cart"
+        className="mt-4 inline-block text-xs tracking-[0.16em] text-bone-dim uppercase underline underline-offset-4 hover:text-rust"
+      >
+        {inBag ? "View bag" : "Open bag"}
+      </Link>
 
       <p aria-live="polite" className="sr-only">
         {message ?? ""}

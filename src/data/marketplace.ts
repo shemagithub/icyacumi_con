@@ -5,7 +5,7 @@ export const vendors: Vendor[] = [
   {
     id: "v-bone",
     slug: "bone-koboyi",
-    name: "BONE KOBOYI",
+    name: "ICYACUMI",
     shortBio: "Host brand. Luxury streetwear, MADE IN AFREEKA.",
     location: "Kigali",
     icon: "hut" as CultureIconName,
@@ -51,6 +51,10 @@ export const events: MarketEvent[] = [
     ticketsLeft: 128,
     image: { src: "/editorial/look-01.png", alt: "Kigali Night Market" },
     vendorIds: ["v-bone", "v-dust", "v-rodeo"],
+    credits: [
+      { role: "DJ", name: "Kwezi" },
+      { role: "Photographer", name: "Yves M." },
+    ],
   },
   {
     id: "ev-002",
@@ -90,12 +94,13 @@ export const ads: AdCreative[] = [
     slug: "lookbook-reel",
     title: "Lookbook Reel",
     type: "video",
-    brand: "BONE KOBOYI",
+    brand: "ICYACUMI",
     summary: "15s campaign cut for feeds and event screens.",
     media: { src: "/editorial/look-01.png", alt: "Lookbook reel still" },
     ctaHref: "/shop",
     ctaLabel: "Shop now",
     featured: true,
+    credits: [{ role: "Videographer", name: "Ishimwe" }],
   },
   {
     id: "ad-002",

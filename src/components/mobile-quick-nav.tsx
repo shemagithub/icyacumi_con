@@ -2,50 +2,99 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { CultureIcon } from "@/components/culture-icons";
-import { site } from "@/lib/site";
+import { CultureIcon, type CultureIconName } from "@/components/culture-icons";
+import { useResolvedAtmosphere } from "@/lib/use-resolved-atmosphere";
+
+const MOBILE_NAV: {
+  href: string;
+  label: string;
+  short: string;
+  icon: CultureIconName;
+}[] = [
+  { href: "/", label: "Home", short: "Home", icon: "hut" },
+  { href: "/shop", label: "Shop", short: "Shop", icon: "cloth" },
+  { href: "/brands", label: "Brands", short: "Brands", icon: "necklace" },
+  { href: "/events", label: "Events", short: "Event", icon: "drum" },
+  { href: "/ads", label: "Ads", short: "Ads", icon: "mask" },
+];
 
 function linkIsActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Mobile primary nav · lives at the bottom; bag & profile stay in the top bar. */
-export function MobileQuickNav() {
-  const pathname = usePathname();
-
-  if (
+function shouldHide(pathname: string) {
+  return (
     pathname.startsWith("/portal") ||
     pathname.startsWith("/admin") ||
     pathname.startsWith("/checkout") ||
     pathname.startsWith("/pay/")
-  ) {
-    return null;
-  }
+  );
+}
+
+function isSummer(atmosphere: string | undefined) {
+  return atmosphere === "summer-day" || atmosphere === "summer-night";
+}
+
+function isWinter(atmosphere: string | undefined) {
+  return atmosphere === "winter-day" || atmosphere === "winter-night";
+}
+
+/** Mobile primary nav · seasonal sweat / frost character on the active tab. */
+export function MobileQuickNav() {
+  const pathname = usePathname();
+  const atmosphere = useResolvedAtmosphere();
+  const seasonAttr = atmosphere === "off" ? undefined : atmosphere;
+
+  if (shouldHide(pathname)) return null;
 
   return (
-    <nav className="mobile-quick-nav lg:hidden" aria-label="Primary">
-      <ul className="mx-auto flex max-w-lg items-stretch justify-between gap-0.5 px-1 sm:px-2">
-        {site.nav.map((link) => {
-          const active = linkIsActive(pathname, link.href);
-          return (
-            <li key={link.href} className="min-w-0 flex-1">
-              <Link
-                href={link.href}
-                className={`relative flex flex-col items-center gap-0.5 px-0.5 py-2 text-center transition-colors ${
-                  active ? "text-rust" : "text-coal/75 hover:text-rust"
-                }`}
-                aria-current={active ? "page" : undefined}
-              >
-                <CultureIcon name={link.icon} className="h-5 w-5 text-rust" />
-                <span className="truncate text-[0.55rem] font-semibold tracking-[0.1em] uppercase sm:text-[0.6rem] sm:tracking-[0.12em]">
-                  {link.label}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <>
+      <div className="mobile-quick-nav-space lg:hidden" aria-hidden />
+      <nav
+        className="mobile-quick-nav lg:hidden"
+        aria-label="Primary"
+        data-atmosphere={seasonAttr}
+      >
+        <ul className="mobile-quick-nav__dock">
+          {MOBILE_NAV.map((link) => {
+            const active = linkIsActive(pathname, link.href);
+            return (
+              <li key={link.href}>
+                <Link
+                  href={link.href}
+                  prefetch
+                  className="mobile-quick-nav__link"
+                  aria-label={link.label}
+                  aria-current={active ? "page" : undefined}
+                >
+                  <span className="mobile-quick-nav__icon" aria-hidden>
+                    <CultureIcon name={link.icon} className="h-5 w-5" />
+                    {active && isSummer(seasonAttr) ? (
+                      <span className="mobile-quick-nav__sweat">
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                    ) : null}
+                    {active && isWinter(seasonAttr) ? (
+                      <span className="mobile-quick-nav__frost">
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="font-nav mobile-quick-nav__label">
+                    {link.short}
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </nav>
+    </>
   );
 }

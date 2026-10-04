@@ -1,106 +1,152 @@
 import type { MetadataRoute } from "next";
 import { getAllEventSlugs, getVendors } from "@/lib/marketplace";
-import { getAllProductSlugs } from "@/lib/products";
-import { site } from "@/lib/site";
+import { getAllProductSlugs, getCollections } from "@/lib/products";
+import { absoluteUrl } from "@/lib/seo";
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const [slugs, eventSlugs, vendors] = await Promise.all([
+  const [slugs, eventSlugs, vendors, collections] = await Promise.all([
     getAllProductSlugs(),
     getAllEventSlugs(),
     getVendors(),
+    getCollections(),
   ]);
   const now = new Date();
 
   const staticPages: MetadataRoute.Sitemap = [
-    { url: site.url, lastModified: now, changeFrequency: "weekly", priority: 1 },
+    { url: absoluteUrl("/"), lastModified: now, changeFrequency: "daily", priority: 1 },
     {
-      url: `${site.url}/shop`,
+      url: absoluteUrl("/shop"),
       lastModified: now,
       changeFrequency: "daily",
       priority: 0.95,
     },
     {
-      url: `${site.url}/brands`,
+      url: absoluteUrl("/shop/sale"),
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.88,
+    },
+    {
+      url: absoluteUrl("/search"),
+      lastModified: now,
+      changeFrequency: "daily",
+      priority: 0.7,
+    },
+    {
+      url: absoluteUrl("/brands"),
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.9,
     },
     {
-      url: `${site.url}/events`,
+      url: absoluteUrl("/events"),
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.85,
     },
     {
-      url: `${site.url}/calendar`,
+      url: absoluteUrl("/calendar"),
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.84,
     },
     {
-      url: `${site.url}/ads`,
+      url: absoluteUrl("/ads"),
       lastModified: now,
       changeFrequency: "weekly",
       priority: 0.8,
     },
     {
-      url: `${site.url}/contact`,
+      url: absoluteUrl("/heritage"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.55,
+    },
+    {
+      url: absoluteUrl("/art"),
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.5,
     },
     {
-      url: `${site.url}/terms`,
+      url: absoluteUrl("/about"),
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.3,
+      priority: 0.55,
     },
     {
-      url: `${site.url}/privacy`,
+      url: absoluteUrl("/contact"),
       lastModified: now,
       changeFrequency: "monthly",
-      priority: 0.3,
+      priority: 0.5,
     },
     {
-      url: `${site.url}/track`,
+      url: absoluteUrl("/sizing"),
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.4,
     },
     {
-      url: `${site.url}/about`,
-      lastModified: now,
-      changeFrequency: "monthly",
-      priority: 0.5,
-    },
-    {
-      url: `${site.url}/heritage`,
+      url: absoluteUrl("/brand-signup"),
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.45,
     },
+    {
+      url: absoluteUrl("/track"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.35,
+    },
+    {
+      url: absoluteUrl("/terms"),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
+    {
+      url: absoluteUrl("/privacy"),
+      lastModified: now,
+      changeFrequency: "yearly",
+      priority: 0.2,
+    },
   ];
 
-  const productPages: MetadataRoute.Sitemap = slugs.map((slug) => ({
-    url: `${site.url}/shop/${slug}`,
+  const collectionPages: MetadataRoute.Sitemap = collections.map((collection) => ({
+    url: absoluteUrl(`/collections/${collection.slug}`),
     lastModified: now,
     changeFrequency: "weekly",
-    priority: 0.7,
+    priority: 0.8,
   }));
 
+  const productPages: MetadataRoute.Sitemap = slugs
+    .filter((slug) => slug !== "sale")
+    .map((slug) => ({
+      url: absoluteUrl(`/shop/${slug}`),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.75,
+    }));
+
   const eventPages: MetadataRoute.Sitemap = eventSlugs.map((slug) => ({
-    url: `${site.url}/events/${slug}`,
+    url: absoluteUrl(`/events/${slug}`),
     lastModified: now,
     changeFrequency: "weekly",
     priority: 0.7,
   }));
 
   const brandPages: MetadataRoute.Sitemap = vendors.map((vendor) => ({
-    url: `${site.url}/brands/${vendor.slug}`,
+    url: absoluteUrl(`/brands/${vendor.slug}`),
     lastModified: now,
     changeFrequency: "weekly",
     priority: 0.75,
   }));
 
-  return [...staticPages, ...productPages, ...eventPages, ...brandPages];
+  return [
+    ...staticPages,
+    ...collectionPages,
+    ...productPages,
+    ...eventPages,
+    ...brandPages,
+  ];
 }

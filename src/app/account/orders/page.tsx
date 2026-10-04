@@ -10,10 +10,13 @@ import { formatPrice } from "@/lib/format";
 
 type OrderRow = {
   reference: string;
+  status: string;
   statusLabel: string;
   total: number;
   currency: string;
   createdAt: string;
+  trackingCode: string | null;
+  carrier: string | null;
   items: Array<{ name: string; quantity: number }>;
 };
 
@@ -113,12 +116,16 @@ export default function AccountOrdersPage() {
               key={order.reference}
               className="flex flex-wrap items-center justify-between gap-4 py-5"
             >
-              <div>
-                <p className="font-semibold tracking-[0.06em] text-coal uppercase">
-                  {order.reference}
-                </p>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-semibold tracking-[0.06em] text-coal uppercase">
+                    {order.reference}
+                  </p>
+                  <span className="rounded-full bg-ash/70 px-2.5 py-0.5 text-[0.65rem] font-semibold tracking-[0.08em] text-coal uppercase">
+                    {order.statusLabel}
+                  </span>
+                </div>
                 <p className="mt-1 text-sm text-bone-dim">
-                  {order.statusLabel} ·{" "}
                   {new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(
                     new Date(order.createdAt),
                   )}
@@ -130,6 +137,12 @@ export default function AccountOrdersPage() {
                     .join(" · ")}
                   {order.items.length > 3 ? "…" : ""}
                 </p>
+                {order.trackingCode || order.carrier ? (
+                  <p className="mt-2 text-xs text-coal">
+                    {order.carrier ? `${order.carrier} · ` : ""}
+                    {order.trackingCode ?? "Tracking pending"}
+                  </p>
+                ) : null}
               </div>
               <div className="flex items-center gap-4">
                 <p className="tabular-nums text-sm font-semibold">

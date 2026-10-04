@@ -31,37 +31,39 @@ export function SiteFooter() {
             <p className="mt-2 text-[0.65rem] tracking-[0.16em] text-rust uppercase">
               {live.madeIn}
             </p>
-            <p className="mt-4 max-w-xs text-sm leading-relaxed text-bone-dim">
-              {live.tagline}
-            </p>
-            <ul className="mt-4 space-y-1.5 text-sm text-bone-dim">
-              <li>
-                <a
-                  href={`mailto:${live.email}`}
-                  className="transition-colors hover:text-rust"
-                >
-                  {live.email}
-                </a>
-              </li>
-              {live.phone ? (
-                <li>
-                  <a
-                    href={`tel:${live.phone.replace(/\s+/g, "")}`}
-                    className="transition-colors hover:text-rust"
-                  >
-                    {live.phone}
-                  </a>
-                </li>
-              ) : null}
-            </ul>
-            {socials.length ? (
-              <div className="mt-6">
-                <p className="mb-3 text-[0.65rem] tracking-[0.16em] text-coal uppercase">
-                  Follow
-                </p>
-                <SocialIcons links={socials} size="md" />
+            <div className="mt-4 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-x-4 gap-y-2">
+              <div className="min-w-0">
+                <p className="text-sm leading-relaxed text-bone-dim">{live.tagline}</p>
+                <ul className="mt-3 space-y-1.5 text-sm text-bone-dim">
+                  <li>
+                    <a
+                      href={`mailto:${live.email}`}
+                      className="break-all transition-colors hover:text-rust"
+                    >
+                      {live.email}
+                    </a>
+                  </li>
+                  {live.phone ? (
+                    <li>
+                      <a
+                        href={`tel:${live.phone.replace(/\s+/g, "")}`}
+                        className="transition-colors hover:text-rust"
+                      >
+                        {live.phone}
+                      </a>
+                    </li>
+                  ) : null}
+                </ul>
               </div>
-            ) : null}
+              {socials.length ? (
+                <div className="flex flex-col items-end self-start pt-0.5">
+                  <p className="mb-2 text-[0.65rem] tracking-[0.16em] text-coal uppercase">
+                    Follow
+                  </p>
+                  <SocialIcons links={socials} size="md" className="justify-end" />
+                </div>
+              ) : null}
+            </div>
             <div className="mt-8 max-w-xs">
               <p className="text-[0.65rem] tracking-[0.16em] text-coal uppercase">
                 Subscribe
@@ -81,14 +83,16 @@ export function SiteFooter() {
           <FooterColumn title="Help" links={helpLinks} />
         </div>
 
-        <div className="mt-12 flex flex-col gap-4 border-t border-ash-line pt-8 text-xs text-bone-dim sm:mt-16 sm:flex-row sm:items-center sm:justify-between">
-          <p suppressHydrationWarning>
+        <div className="mt-12 flex flex-row flex-wrap items-center justify-between gap-x-3 gap-y-2 border-t border-ash-line pt-8 text-xs text-bone-dim sm:mt-16">
+          <p className="min-w-0 shrink" suppressHydrationWarning>
             &copy; {new Date().getFullYear()} {live.companyName}
           </p>
-          {socials.length ? <SocialIcons links={socials} size="sm" /> : null}
-          <p className="inline-flex items-center gap-2 tracking-[0.18em] uppercase">
-            <CultureIcon name="headwrap" className="h-4.5 w-4.5 text-rust" />
-            {live.madeIn}
+          {socials.length ? (
+            <SocialIcons links={socials} size="sm" className="shrink-0" />
+          ) : null}
+          <p className="inline-flex shrink-0 items-center gap-1.5 tracking-[0.14em] uppercase sm:tracking-[0.18em]">
+            <CultureIcon name="headwrap" className="h-4 w-4 text-rust sm:h-4.5 sm:w-4.5" />
+            <span className="whitespace-nowrap">{live.madeIn}</span>
           </p>
         </div>
       </Container>

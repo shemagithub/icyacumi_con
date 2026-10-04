@@ -1,15 +1,15 @@
-# BONE KOBOYI
+# ICYACUMI
 
 Contemporary luxury streetwear inspired by art, craftsmanship, and modern cultural experimentation. **MADE IN AFREEKA.** Built with Next.js.
 
-Small-batch apparel — heavyweight canvas, selvedge denim, garment-dyed fleece — with SEO-friendly product pages, image optimization, a persistent bag, and a Stripe-ready checkout.
+Small-batch apparel — heavyweight canvas, selvedge denim, garment-dyed fleece — with SEO-friendly product pages, image optimization, a persistent bag, and XentriPay checkout (MoMo + card).
 
 ## Stack
 
 - **Next.js 16** (App Router) — SSR/SSG for SEO, `next/image` for product photos
 - **TypeScript** + **Tailwind CSS 4**
 - **Local seed catalog** — swap for a database or CMS later without touching pages
-- **Stripe Checkout** — wired via a route handler; no SDK required to start
+- **XentriPay** — MTN MoMo, Airtel Money, and card collections (RWF)
 
 ## Getting started
 
@@ -29,12 +29,14 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/shop` | Catalog with collection / category / size / colour / sort filters |
 | `/shop/[slug]` | Product detail with size & colour picker, JSON-LD, related pieces |
 | `/cart` | Bag with quantity controls and checkout |
+| `/search` | Crawlable marketplace search results |
+| `/checkout/pay` | MTN MoMo, Airtel Money, or card via XentriPay |
 | `/checkout/success` | Post-payment confirmation |
 | `/about` | Brand story |
 | `/sizing` | Size guide |
-| `/api/checkout` | Creates a Stripe Checkout Session |
+| `/api/catalog/payments/initiate` | Starts a XentriPay collection |
 
-Also: `sitemap.xml`, `robots.txt`, and Open Graph metadata on every product.
+Also: `sitemap.xml`, `robots.txt`, web manifest, Open Graph metadata, and JSON-LD (Organization, WebSite SearchAction, Product, Event, Brand, BreadcrumbList) for search engines.
 
 ## Project layout
 
@@ -53,23 +55,36 @@ scripts/
 
 Product data lives in `src/data/catalog.ts`. Everything else reads it through `src/lib/products.ts`, so replacing the seed with Postgres, Sanity, Shopify, etc. only means rewriting that one module.
 
-## Enabling Stripe
+## Enabling XentriPay
 
-1. Copy `.env.example` → `.env.local` (a starter file is already there).
-2. Add a test secret key from the [Stripe Dashboard](https://dashboard.stripe.com/test/apikeys):
+Storefront checkout uses XentriPay collections (MoMo + card). The API key stays on the backend only.
+
+1. Copy `backend/.env.example` → `backend/.env`.
+2. Add your merchant key from the [XentriPay dashboard](https://merchant.test.xentripay.com):
 
 ```env
-NEXT_PUBLIC_SITE_URL=http://localhost:3000
-STRIPE_SECRET_KEY=sk_test_...
+XENTRIPAY_API_KEY=your_key
+XENTRIPAY_BASE_URL=https://merchant.test.xentripay.com
+FRONTEND_URL=http://localhost:3000
 ```
 
-3. Restart `npm run dev`, add something to the bag, and hit **Proceed to checkout**.
+3. Restart the backend, add something to the bag, and pay with MTN, Airtel, or card.
 
-Without a key, checkout returns a clear 503 explaining what's missing instead of failing silently.
+Without a key, checkout returns a clear error instead of marking the order paid. Amounts are whole RWF (minimum 100). MoMo sends a phone prompt; card redirects to the XentriPay/Urubuto page. The order is created only after collection status is `SUCCESS`.
 
-Prices are looked up **server-side** from the catalog. The browser only sends product IDs, size, colour and quantity — never a price.
+For production, set `XENTRIPAY_BASE_URL=https://xentripay.com` and `FRONTEND_URL` / `NEXT_PUBLIC_SITE_URL` to your live domain.
 
-For production, set `NEXT_PUBLIC_SITE_URL` to your live domain so Stripe success/cancel redirects and product images resolve correctly.
+## Search engines (SEO)
+
+Set `NEXT_PUBLIC_SITE_URL` to your live domain so canonical URLs, Open Graph, sitemap, and robots resolve correctly.
+
+After deploy:
+
+1. Open `/robots.txt` and `/sitemap.xml` and confirm they use your domain.
+2. In [Google Search Console](https://search.google.com/search-console), add the property and submit `https://your-domain/sitemap.xml`.
+3. Optionally do the same in Bing Webmaster Tools.
+
+Structured data is emitted for Organization, WebSite (with SearchAction → `/search?q=`), Product, Event, Brand, BreadcrumbList, and CollectionPage.
 
 ## Photography
 
@@ -89,6 +104,6 @@ Product and scene images are real Unsplash photos (`npm run images:real`), free 
 ## Next steps when you're ready
 
 - Point `src/lib/products.ts` at a real database or headless CMS
-- Add a Stripe webhook at `/api/webhooks/stripe` to record paid orders
+- Confirm XentriPay live keys and `FRONTEND_URL` on production
 - Wire the footer newsletter form to Klaviyo / Resend / Mailchimp
 - Replace Unsplash stand-ins with your own product photography

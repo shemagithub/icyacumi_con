@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useAuth } from "@/components/auth-provider";
 import { makeLineId, useCart } from "@/components/cart-provider";
@@ -14,7 +14,6 @@ export function TicketBuyButton({ event }: { event: MarketEvent }) {
   const { lines, toggleTicket, hydrated } = useCart();
   const { user, loading } = useAuth();
   const router = useRouter();
-  const pathname = usePathname();
   const [message, setMessage] = useState<string | null>(null);
   const soldOut = event.ticketsLeft <= 0;
 
@@ -24,28 +23,29 @@ export function TicketBuyButton({ event }: { event: MarketEvent }) {
     return lines.some((line) => line.id === id);
   }, [lines, event.id, hydrated]);
 
-  function requireClient(): boolean {
-    if (loading) return false;
-    if (!user) {
-      router.push(loginHref(pathname));
-      return false;
-    }
-    if (user.type === "brand") {
+  function blockStaff(): boolean {
+    if (user?.type === "brand") {
       router.push("/portal");
-      return false;
+      return true;
     }
-    return true;
+    if (user?.type === "admin") {
+      router.push("/admin");
+      return true;
+    }
+    return false;
   }
 
   function handleToggle() {
-    if (!requireClient()) return;
+    if (loading) return;
+    if (blockStaff()) return;
     const result = toggleTicket(event);
     setMessage(result === "removed" ? "Ticket removed from bag" : "Ticket in bag");
     window.setTimeout(() => setMessage(null), 2800);
   }
 
   function handleBuyNow() {
-    if (!requireClient()) return;
+    if (loading) return;
+    if (blockStaff()) return;
     const line: CartLine = {
       id: makeLineId(event.id, "OS", "Ticket"),
       productId: event.id,
@@ -60,6 +60,10 @@ export function TicketBuyButton({ event }: { event: MarketEvent }) {
       stockCap: Math.min(event.ticketsLeft, 10),
     };
     saveBuyNowLines([line]);
+    if (!user) {
+      router.push(loginHref("/checkout"));
+      return;
+    }
     router.push("/checkout");
   }
 
@@ -76,7 +80,7 @@ export function TicketBuyButton({ event }: { event: MarketEvent }) {
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <button
           type="button"
-          disabled={loading}
+          disabled={loading || user?.type === "brand" || user?.type === "admin"}
           aria-pressed={inBag}
           onClick={handleToggle}
           className={`craft-btn px-8 py-4 text-xs tracking-[0.2em] uppercase transition-colors disabled:opacity-60 ${
@@ -85,21 +89,19 @@ export function TicketBuyButton({ event }: { event: MarketEvent }) {
               : "bg-rust text-bone hover:bg-sand"
           }`}
         >
-          {!user
-            ? `Log in · ${formatPrice(event.price)}`
-            : user.type === "brand"
-              ? "Brand accounts use portal"
-              : inBag
-                ? "Remove ticket from bag"
-                : `Add ticket · ${formatPrice(event.price)}`}
+          {user?.type === "brand"
+            ? "Brand accounts use portal"
+            : inBag
+              ? "Remove ticket from bag"
+              : `Add ticket · ${formatPrice(event.price)}`}
         </button>
         <button
           type="button"
-          disabled={loading || user?.type === "brand"}
+          disabled={loading || user?.type === "brand" || user?.type === "admin"}
           onClick={handleBuyNow}
           className="craft-btn-ghost bg-bone px-8 py-4 text-xs tracking-[0.2em] text-coal uppercase transition-colors hover:text-rust disabled:opacity-60"
         >
-          Buy now
+          {!user ? "Sign in to buy" : "Buy now"}
         </button>
       </div>
       {message ? (
@@ -107,21 +109,12 @@ export function TicketBuyButton({ event }: { event: MarketEvent }) {
           {message}
         </p>
       ) : null}
-      {user?.type === "client" ? (
-        <Link
-          href="/cart"
-          className="text-xs tracking-[0.16em] text-bone-dim uppercase underline underline-offset-4 hover:text-rust"
-        >
-          View bag
-        </Link>
-      ) : (
-        <Link
-          href="/register"
-          className="text-xs tracking-[0.16em] text-bone-dim uppercase underline underline-offset-4 hover:text-rust"
-        >
-          Create client account
-        </Link>
-      )}
+      <Link
+        href="/cart"
+        className="text-xs tracking-[0.16em] text-bone-dim uppercase underline underline-offset-4 hover:text-rust"
+      >
+        View bag
+      </Link>
     </div>
   );
 }

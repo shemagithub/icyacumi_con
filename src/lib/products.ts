@@ -58,9 +58,13 @@ async function withBrandMeta(products: Product[]): Promise<Product[]> {
   });
 }
 
+export function isOnSale(product: Product) {
+  return Boolean(product.compareAtPrice && product.compareAtPrice > product.price);
+}
+
 function saleScore(product: Product) {
-  if (!product.compareAtPrice || product.compareAtPrice <= product.price) return 0;
-  return product.compareAtPrice - product.price;
+  if (!isOnSale(product)) return 0;
+  return (product.compareAtPrice ?? 0) - product.price;
 }
 
 function sortProducts(list: Product[], sort: SortKey = "featured"): Product[] {
@@ -132,6 +136,22 @@ export async function getProducts(filters: ProductFilters = {}): Promise<Product
 
 export async function getMostViewedProducts(limit = 8): Promise<Product[]> {
   return sortProducts(await loadProducts(), "views").slice(0, limit);
+}
+
+function promoTime(product: Product) {
+  const stamp = product.updatedAt ?? product.createdAt;
+  return stamp ? Date.parse(stamp) : 0;
+}
+
+/** In-stock discounted pieces · recently updated first, then deepest cut. */
+export async function getDiscountedProducts(limit?: number): Promise<Product[]> {
+  const sales = (await loadProducts()).filter((product) => isOnSale(product) && product.inStock);
+  const sorted = [...sales].sort((a, b) => {
+    const byTime = promoTime(b) - promoTime(a);
+    if (byTime !== 0) return byTime;
+    return saleScore(b) - saleScore(a) || b.views - a.views;
+  });
+  return typeof limit === "number" ? sorted.slice(0, limit) : sorted;
 }
 
 export const getProductsByVendor = cache(async (

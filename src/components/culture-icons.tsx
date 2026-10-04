@@ -343,6 +343,34 @@ export function IconSearch(props: IconProps) {
   );
 }
 
+/** Door + exit arrow · Log out */
+export function IconLogout(props: IconProps) {
+  return (
+    <Svg {...props}>
+      <path
+        d="M5.5 7h11v18h-11"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path
+        d="M5.5 7V5.5A1.5 1.5 0 0 1 7 4h9.5v24H7a1.5 1.5 0 0 1-1.5-1.5V25"
+        stroke="currentColor"
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <circle cx="13.5" cy="16" r="1.2" fill="currentColor" />
+      <path
+        d="M18 16h8.5M22.5 11.8L27.5 16l-5 4.2"
+        stroke="currentColor"
+        strokeWidth="1.85"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export const cultureIcons = {
   textile: IconTextile,
   sun: IconSun,
@@ -360,6 +388,7 @@ export const cultureIcons = {
   menu: IconMenu,
   menuClose: IconMenuClose,
   search: IconSearch,
+  logout: IconLogout,
 } as const;
 
 export type CultureIconName = keyof typeof cultureIcons;

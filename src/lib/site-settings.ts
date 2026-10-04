@@ -1,5 +1,8 @@
 import { backendFetch } from "@/lib/backend";
+import { compressImageFile } from "@/lib/compress-image";
 import { site as staticSite } from "@/lib/site";
+import { defaultSiteTheme, parseThemeJson, type SiteTheme } from "@/lib/site-theme";
+import { cache } from "react";
 
 export type PublicSiteSettings = {
   companyName: string;
@@ -26,6 +29,7 @@ export type PublicSiteSettings = {
   twitter: string | null;
   youtube: string | null;
   website: string | null;
+  theme: SiteTheme;
   social: Array<{ href: string; label: string }>;
   updatedAt?: string;
 };
@@ -58,6 +62,7 @@ export const defaultSiteSettings: PublicSiteSettings = {
   twitter: null,
   youtube: null,
   website: null,
+  theme: defaultSiteTheme,
   social: [...staticSite.social],
 };
 
@@ -102,55 +107,52 @@ export function normalizeSiteSettings(
     twitter: raw.twitter ?? null,
     youtube: raw.youtube ?? null,
     website: raw.website ?? null,
+    theme: parseThemeJson(raw.theme),
     social,
     updatedAt: raw.updatedAt,
   };
 }
 
 /** Server-side fetch (layout / pages). Falls back to defaults if backend is down. */
-export async function fetchPublicSiteSettings(): Promise<PublicSiteSettings> {
-  try {
-    const response = await backendFetch("/api/catalog/site-settings");
-    if (!response.ok) return defaultSiteSettings;
-    const data = (await response.json()) as { settings?: Partial<PublicSiteSettings> };
-    return normalizeSiteSettings(data.settings);
-  } catch {
-    return defaultSiteSettings;
-  }
-}
+export const fetchPublicSiteSettings = cache(
+  async (): Promise<PublicSiteSettings> => {
+    try {
+      const response = await backendFetch("/api/catalog/site-settings");
+      if (!response.ok) return defaultSiteSettings;
+      const data = (await response.json()) as {
+        settings?: Partial<PublicSiteSettings>;
+      };
+      return normalizeSiteSettings(data.settings);
+    } catch {
+      return defaultSiteSettings;
+    }
+  },
+);
 
 /** Compress / resize a logo for LongText storage (keeps PNG when possible). */
-export async function fileToLogoDataUrl(file: File, maxSize = 512): Promise<string> {
-  return fileToImageDataUrl(file, maxSize, { preferPng: true, quality: 0.9 });
+export async function fileToLogoDataUrl(file: File, maxSize = 400): Promise<string> {
+  return compressImageFile(file, {
+    maxEdge: maxSize,
+    preferPng: true,
+    quality: 0.82,
+    maxBytes: 120_000,
+  });
 }
 
 /** Wide About-page hero · JPEG for smaller payload. */
-export async function fileToHeroDataUrl(file: File, maxWidth = 1600): Promise<string> {
-  return fileToImageDataUrl(file, maxWidth, { preferPng: false, quality: 0.82 });
+export async function fileToHeroDataUrl(file: File, maxWidth = 1280): Promise<string> {
+  return compressImageFile(file, {
+    maxEdge: maxWidth,
+    quality: 0.74,
+    maxBytes: 280_000,
+  });
 }
 
-async function fileToImageDataUrl(
-  file: File,
-  maxSize: number,
-  opts: { preferPng: boolean; quality: number },
-): Promise<string> {
-  const bitmap = await createImageBitmap(file);
-  const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
-  const width = Math.max(1, Math.round(bitmap.width * scale));
-  const height = Math.max(1, Math.round(bitmap.height * scale));
-  const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Could not process image.");
-  ctx.drawImage(bitmap, 0, 0, width, height);
-  bitmap.close();
-  const preferPng =
-    opts.preferPng &&
-    (file.type === "image/png" ||
-      file.type === "image/webp" ||
-      file.type === "image/svg+xml");
-  return preferPng
-    ? canvas.toDataURL("image/png")
-    : canvas.toDataURL("image/jpeg", opts.quality);
+/** Storefront background art · JPEG to keep theme JSON small. */
+export async function fileToPatternDataUrl(file: File, maxWidth = 1100): Promise<string> {
+  return compressImageFile(file, {
+    maxEdge: maxWidth,
+    quality: 0.7,
+    maxBytes: 220_000,
+  });
 }

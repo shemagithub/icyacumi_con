@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { AddToCartForm } from "@/components/add-to-cart-form";
 import { BrandProfileCard } from "@/components/brand-profile-card";
+import { CreditsList } from "@/components/credits-list";
 import { CraftPassport } from "@/components/craft-passport";
 import { ProductGallery } from "@/components/product-gallery";
 import { ShareProductButton } from "@/components/share-product-button";
@@ -145,6 +146,8 @@ export function ProductDetail({
           brandName={brandName}
           originCity={vendor?.location ?? product.brandLocation}
         />
+
+        <CreditsList credits={product.credits} title="Credits" />
 
         <CraftPassport data={buildCraftPassport(product, vendor)} />
 

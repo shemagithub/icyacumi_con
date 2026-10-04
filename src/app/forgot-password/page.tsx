@@ -59,7 +59,7 @@ export default function ForgotPasswordPage() {
             <p className="mt-3 text-sm text-bone-dim">{message}</p>
             {mailed ? (
               <p className="mt-2 text-sm text-bone-dim">
-                Look for an email from BONE KOBOYI with a 6-digit code.
+                Look for an email from ICYACUMI with a 6-digit code.
               </p>
             ) : null}
             {devCode ? (

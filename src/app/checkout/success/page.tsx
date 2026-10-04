@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ClearCartOnMount } from "@/components/clear-cart-on-mount";
 import { Container } from "@/components/container";
+import { CopyReferenceButton } from "@/components/copy-reference-button";
 import { CultureIcon } from "@/components/culture-icons";
 import { SendOrderReceipt } from "@/components/send-order-receipt";
 import { site } from "@/lib/site";
@@ -40,15 +41,18 @@ export default async function CheckoutSuccessPage({
           </p>
 
           {orderRef ? (
-            <p className="mt-6 text-sm text-bone-dim">
-              Reference:{" "}
-              <Link
-                href={`/track/${encodeURIComponent(orderRef)}`}
-                className="font-semibold tracking-[0.08em] text-coal uppercase underline underline-offset-4 hover:text-rust"
-              >
-                {orderRef}
-              </Link>
-            </p>
+            <div className="mt-6 space-y-2">
+              <p className="text-sm text-bone-dim">
+                Reference:{" "}
+                <Link
+                  href={`/track/${encodeURIComponent(orderRef)}`}
+                  className="font-semibold tracking-[0.08em] text-coal uppercase underline underline-offset-4 hover:text-rust"
+                >
+                  {orderRef}
+                </Link>
+              </p>
+              <CopyReferenceButton value={orderRef} />
+            </div>
           ) : sessionIdValue ? (
             <>
               <p className="mt-6 text-xs tracking-[0.14em] text-bone-dim uppercase">

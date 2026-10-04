@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AdminPagination } from "@/components/admin-pagination";
+import { CreditsEditor } from "@/components/credits-editor";
 import {
   PortalProductFormModal,
   type PortalProductPayload,
 } from "@/components/portal-product-form-modal";
+import { parseCredits } from "@/lib/credits";
 import { formatPrice } from "@/lib/format";
 import { usePagination } from "@/lib/pagination";
-import type { Product } from "@/lib/types";
+import type { Credit, Product } from "@/lib/types";
 
 export default function PortalProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -17,6 +19,8 @@ export default function PortalProductsPage() {
   const [formError, setFormError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [creditProduct, setCreditProduct] = useState<Product | null>(null);
+  const [creditDraft, setCreditDraft] = useState<Credit[]>([]);
   const [query, setQuery] = useState("");
   const [stockDrafts, setStockDrafts] = useState<Record<string, string>>({});
 
@@ -84,6 +88,25 @@ export default function PortalProductsPage() {
     await load();
   }
 
+  async function saveCredits() {
+    if (!creditProduct) return;
+    setPending(true);
+    setError(null);
+    const response = await fetch(`/api/portal/products/${creditProduct.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ credits: parseCredits(creditDraft) }),
+    });
+    const data = await response.json();
+    setPending(false);
+    if (!response.ok) {
+      setError(data.error ?? "Could not save credits");
+      return;
+    }
+    setCreditProduct(null);
+    await load();
+  }
+
   async function remove(product: Product) {
     if (!confirm(`Delete ${product.name}?`)) return;
     await fetch(`/api/portal/products/${product.id}`, { method: "DELETE" });
@@ -105,8 +128,8 @@ export default function PortalProductsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Products</h1>
           <p className="mt-1 text-sm text-[var(--portal-muted)]">
-            Publish full listings with sizes, colours, fabric, and stock. Sales
-            reduce quantity until the item shows sold out.
+            Publish full listings with sizes, colours, fabric, and stock. Set a
+            higher was-price to run a discount promo on pieces sitting in stock.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -182,6 +205,15 @@ export default function PortalProductsPage() {
                       <span className="portal-badge portal-badge--muted">
                         {product.views} views
                       </span>
+                      {product.compareAtPrice && product.compareAtPrice > product.price ? (
+                        <span className="portal-badge portal-badge--ok">Promo</span>
+                      ) : null}
+                      {product.credits?.length ? (
+                        <span className="portal-badge portal-badge--muted">
+                          {product.credits.length} credit
+                          {product.credits.length === 1 ? "" : "s"}
+                        </span>
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -192,6 +224,16 @@ export default function PortalProductsPage() {
                   >
                     View
                   </Link>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCreditProduct(product);
+                      setCreditDraft(product.credits ?? []);
+                    }}
+                    className="portal-btn portal-btn--ghost !py-2 !text-xs"
+                  >
+                    Credits
+                  </button>
                   <button
                     type="button"
                     onClick={() => void toggleStock(product)}
@@ -276,6 +318,49 @@ export default function PortalProductsPage() {
         }}
         onSubmit={createProduct}
       />
+
+      {creditProduct ? (
+        <div className="fixed inset-0 z-[300] flex items-end justify-center sm:items-center">
+          <button
+            type="button"
+            aria-label="Close credits"
+            className="absolute inset-0 bg-coal/55 backdrop-blur-[2px]"
+            onClick={() => {
+              if (!pending) setCreditProduct(null);
+            }}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="relative z-[1] w-full max-w-2xl space-y-4 rounded-t-2xl border border-[var(--portal-line)] bg-[var(--portal-card,#fff)] p-5 shadow-[0_24px_60px_rgba(17,17,17,0.28)] sm:rounded-2xl sm:p-6"
+          >
+            <div>
+              <p className="text-xs font-semibold tracking-[0.1em] text-[var(--portal-muted)] uppercase">
+                Shout-out
+              </p>
+              <h2 className="mt-1 text-lg font-bold">{creditProduct.name}</h2>
+            </div>
+            <CreditsEditor value={creditDraft} onChange={setCreditDraft} />
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={pending}
+                onClick={() => void saveCredits()}
+                className="portal-btn portal-btn--accent disabled:opacity-60"
+              >
+                {pending ? "Saving…" : "Save credits"}
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreditProduct(null)}
+                className="portal-btn portal-btn--ghost"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

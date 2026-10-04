@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { shopHref, hasActiveFilters } from "@/lib/shop-url";
 import type {
   Category,
+  CategorySlug,
   ColorOption,
   ProductFilters,
   Size,
@@ -19,7 +20,7 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
   { key: "sale-desc", label: "Sale: high to low" },
 ];
 
-/** Compact shop filters · a few selects, not long chip walls. */
+/** Shop filters · one horizontal row (scrolls on phones), grid on wide screens. */
 export function ShopFilters({
   filters,
   categories,
@@ -35,18 +36,62 @@ export function ShopFilters({
 }) {
   const router = useRouter();
   const activeSort = filters.sort ?? "featured";
+  const categoryName = categories.find((item) => item.slug === filters.category)?.name;
 
   function go(patch: Partial<ProductFilters>) {
     router.push(shopHref(filters, patch));
   }
 
+  const pills: { key: string; label: string; clear: Partial<ProductFilters> }[] = [];
+  if (filters.category) {
+    pills.push({
+      key: "category",
+      label: categoryName ?? filters.category,
+      clear: { category: undefined },
+    });
+  }
+  if (filters.size) {
+    pills.push({ key: "size", label: `Size ${filters.size}`, clear: { size: undefined } });
+  }
+  if (filters.color) {
+    pills.push({ key: "color", label: filters.color, clear: { color: undefined } });
+  }
+
   return (
-    <div className="border-y border-ash-line py-4">
-      <div className="flex flex-wrap items-end gap-3 sm:gap-4">
+    <div className="shop-filters">
+      {pills.length > 0 ? (
+        <div className="shop-filters__pills">
+          {pills.map((pill) => (
+            <button
+              key={pill.key}
+              type="button"
+              className="shop-filters__pill"
+              onClick={() => go(pill.clear)}
+            >
+              {pill.label}
+              <span aria-hidden>×</span>
+            </button>
+          ))}
+          <Link
+            href={shopHref(filters, {
+              category: undefined,
+              size: undefined,
+              color: undefined,
+            })}
+            className="shop-filters__clear"
+          >
+            Clear
+          </Link>
+        </div>
+      ) : null}
+
+      <div className="shop-filters__grid">
         <FilterSelect
           label="Category"
           value={filters.category ?? ""}
-          onChange={(value) => go({ category: value || undefined })}
+          onChange={(value) =>
+            go({ category: (value || undefined) as CategorySlug | undefined })
+          }
         >
           <option value="">All</option>
           {categories.map((category) => (
@@ -95,20 +140,15 @@ export function ShopFilters({
             </option>
           ))}
         </FilterSelect>
+      </div>
 
-        <div className="ml-auto flex min-w-[8rem] flex-col justify-end gap-1 pb-0.5">
-          <p className="text-xs tracking-[0.14em] text-bone-dim uppercase">
-            {resultCount} {resultCount === 1 ? "piece" : "pieces"}
-          </p>
-          {hasActiveFilters(filters) || activeSort !== "featured" ? (
-            <Link
-              href="/shop"
-              className="text-xs tracking-[0.14em] text-rust uppercase underline underline-offset-4 hover:text-sand"
-            >
-              Clear filters
-            </Link>
-          ) : null}
-        </div>
+      <div className="shop-filters__meta">
+        <p>
+          {resultCount} {resultCount === 1 ? "piece" : "pieces"}
+        </p>
+        {hasActiveFilters(filters) || activeSort !== "featured" ? (
+          <Link href="/shop">Clear filters</Link>
+        ) : null}
       </div>
     </div>
   );
@@ -126,12 +166,12 @@ function FilterSelect({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block min-w-[7.5rem] flex-1 sm:max-w-[14rem]">
-      <span className="eyebrow mb-1.5 block">{label}</span>
+    <label className="shop-filter-field">
+      <span className="eyebrow">{label}</span>
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="field-input w-full appearance-none py-2.5 pr-8 text-xs tracking-[0.04em]"
+        className="field-input shop-filter-field__select"
       >
         {children}
       </select>

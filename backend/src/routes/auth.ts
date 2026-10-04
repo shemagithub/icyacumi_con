@@ -35,6 +35,15 @@ function slugifyBrand(input: string) {
     .slice(0, 80);
 }
 
+function sanitizeKycDoc(value: unknown): string | null {
+  const text = String(value ?? "").trim();
+  if (!text || text.length > 5_000_000) return null;
+  if (text.startsWith("data:image/") || text.startsWith("data:application/pdf")) {
+    return text;
+  }
+  return null;
+}
+
 function clientSession(client: {
   id: string;
   email: string;
@@ -452,6 +461,9 @@ authRouter.post("/register-brand", async (req, res) => {
   const allowedIcons = new Set(["hut", "cloth", "mask", "necklace", "textile", "drum"]);
   const icon = allowedIcons.has(iconRaw) ? iconRaw : "textile";
 
+  const kycIdDocument = sanitizeKycDoc(req.body?.kycIdDocument);
+  const kycRdbCertificate = sanitizeKycDoc(req.body?.kycRdbCertificate);
+
   let slug =
     slugifyBrand(String(req.body?.slug ?? "").trim()) || slugifyBrand(brandName);
 
@@ -465,6 +477,13 @@ authRouter.post("/register-brand", async (req, res) => {
   if (!applicationNote || applicationNote.length < 20) {
     res.status(400).json({
       error: "Tell us a bit more about what you sell (at least 20 characters).",
+    });
+    return;
+  }
+  if (!kycIdDocument || !kycRdbCertificate) {
+    res.status(400).json({
+      error:
+        "KYC requires a national ID (or passport) scan and an RDB certificate (JPG, PNG, WEBP, or PDF).",
     });
     return;
   }
@@ -501,11 +520,14 @@ authRouter.post("/register-brand", async (req, res) => {
       slug,
       shortBio:
         shortBio ||
-        `${brandName} · independent maker on BONE KOBOYI, MADE IN AFREEKA.`,
+        `${brandName} · independent maker on ICYACUMI, MADE IN AFREEKA.`,
       location,
       icon,
       status: "pending",
       applicationNote,
+      kycIdDocument,
+      kycRdbCertificate,
+      kycSubmittedAt: new Date(),
       contactEmail: contactEmail.includes("@") ? contactEmail : email,
       contactPhone,
       website,
@@ -537,6 +559,7 @@ authRouter.post("/register-brand", async (req, res) => {
     ownerEmail: email,
     contactPhone,
     applicationNote,
+    hasKyc: true,
   });
 
   res.status(201).json({
@@ -762,9 +785,15 @@ authRouter.post("/reset-password", async (req, res) => {
 
   // Force a fresh login with the new password.
   clearAuthCookie(res);
+  const nextPath =
+    result.account === "admin"
+      ? "/admin"
+      : result.account === "brand"
+        ? "/portal"
+        : "/account";
   res.json({
     ok: true,
-    redirectTo: `/login?reset=1&email=${encodeURIComponent(email)}`,
+    redirectTo: `/login?reset=1&email=${encodeURIComponent(email)}&next=${encodeURIComponent(nextPath)}`,
   });
 });
 
@@ -903,10 +932,16 @@ authRouter.post("/change-password", requireAuth, async (req: AuthedRequest, res)
   }
 
   clearAuthCookie(res);
+  const nextPath =
+    session.type === "admin"
+      ? "/admin"
+      : session.type === "brand"
+        ? "/portal"
+        : "/account";
   res.json({
     ok: true,
     reLogin: true,
-    redirectTo: `/login?changed=1&email=${encodeURIComponent(session.email)}`,
+    redirectTo: `/login?changed=1&email=${encodeURIComponent(session.email)}&next=${encodeURIComponent(nextPath)}`,
   });
 });
 

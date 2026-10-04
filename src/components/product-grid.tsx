@@ -10,7 +10,7 @@ export function ProductGrid({
   priorityCount?: number;
 }) {
   return (
-    <div className="culture-stagger grid grid-cols-1 gap-x-6 gap-y-12 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+    <div className="store-product-grid culture-stagger">
       {products.map((product, index) => (
         <ProductCard
           key={product.id}

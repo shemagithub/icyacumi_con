@@ -7,6 +7,7 @@ import { Container } from "@/components/container";
 import { CultureIcon, type CultureIconName } from "@/components/culture-icons";
 import { PasswordInput } from "@/components/password-input";
 import { TermsAcceptCheckbox } from "@/components/terms-accept-checkbox";
+import { fileToKycDataUrl, kycDocKind } from "@/lib/kyc-docs";
 import { site } from "@/lib/site";
 
 const ICONS: { value: CultureIconName; label: string }[] = [
@@ -22,8 +23,11 @@ const STEPS = [
   { id: 1, label: "Brand" },
   { id: 2, label: "Contact" },
   { id: 3, label: "Account" },
-  { id: 4, label: "Review" },
+  { id: 4, label: "KYC" },
+  { id: 5, label: "Review" },
 ] as const;
+
+const KYC_ACCEPT = "image/jpeg,image/png,image/webp,application/pdf";
 
 function slugify(input: string) {
   return input
@@ -32,6 +36,13 @@ function slugify(input: string) {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 80);
+}
+
+function kycLabel(dataUrl: string | null) {
+  const kind = kycDocKind(dataUrl);
+  if (kind === "pdf") return "PDF attached";
+  if (kind === "image") return "Image attached";
+  return null;
 }
 
 export default function BrandSignupForm() {
@@ -52,6 +63,11 @@ export default function BrandSignupForm() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [kycIdDocument, setKycIdDocument] = useState<string | null>(null);
+  const [kycRdbCertificate, setKycRdbCertificate] = useState<string | null>(null);
+  const [kycIdName, setKycIdName] = useState<string | null>(null);
+  const [kycRdbName, setKycRdbName] = useState<string | null>(null);
+  const [kycBusy, setKycBusy] = useState<"id" | "rdb" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
@@ -83,7 +99,35 @@ export default function BrandSignupForm() {
         return "Please accept the Terms & Conditions and Privacy Policy.";
       }
     }
+    if (current === 4) {
+      if (!kycIdDocument || !kycRdbCertificate) {
+        return "Upload both your national ID/passport and RDB certificate.";
+      }
+    }
     return null;
+  }
+
+  async function onKycFile(
+    which: "id" | "rdb",
+    file: File | null | undefined,
+  ) {
+    if (!file) return;
+    setKycBusy(which);
+    setError(null);
+    try {
+      const dataUrl = await fileToKycDataUrl(file);
+      if (which === "id") {
+        setKycIdDocument(dataUrl);
+        setKycIdName(file.name);
+      } else {
+        setKycRdbCertificate(dataUrl);
+        setKycRdbName(file.name);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not process file.");
+    } finally {
+      setKycBusy(null);
+    }
   }
 
   function goNext() {
@@ -99,7 +143,7 @@ export default function BrandSignupForm() {
     if (step === 3 && !contactEmail.trim()) {
       setContactEmail(email);
     }
-    setStep((value) => Math.min(4, value + 1));
+    setStep((value) => Math.min(5, value + 1));
   }
 
   function goBack() {
@@ -109,10 +153,18 @@ export default function BrandSignupForm() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    const message = validateStep(3) || validateStep(1);
+    const message =
+      validateStep(4) || validateStep(3) || validateStep(1);
     if (message) {
       setError(message);
-      setStep(message.includes("Password") || message.includes("Terms") ? 3 : 1);
+      if (message.includes("KYC") || message.includes("national ID")) setStep(4);
+      else if (message.includes("Password") || message.includes("Terms")) setStep(3);
+      else setStep(1);
+      return;
+    }
+    if (!kycIdDocument || !kycRdbCertificate) {
+      setError("Upload both your national ID/passport and RDB certificate.");
+      setStep(4);
       return;
     }
     setError(null);
@@ -135,6 +187,8 @@ export default function BrandSignupForm() {
           ownerName,
           email,
           password,
+          kycIdDocument,
+          kycRdbCertificate,
         }),
       });
       const data = await response.json();
@@ -170,6 +224,7 @@ export default function BrandSignupForm() {
               "Create your brand profile",
               "Add contact details shoppers will see",
               "Set your portal login",
+              "Upload KYC documents",
               "Verify email · wait for approval",
             ].map((item, index) => (
               <li key={item} className="flex gap-3 text-sm text-bone-dim">
@@ -428,6 +483,61 @@ export default function BrandSignupForm() {
               <div>
                 <p className="eyebrow">Step 4</p>
                 <h2 className="font-display mt-1 text-2xl tracking-[0.04em]">
+                  KYC documents
+                </h2>
+                <p className="mt-2 text-sm text-bone-dim">
+                  Upload a national ID or passport and your RDB business certificate
+                  (JPG, PNG, WEBP, or PDF).
+                </p>
+              </div>
+              <label className="block">
+                <span className="eyebrow mb-2 block">National ID / passport</span>
+                <input
+                  type="file"
+                  accept={KYC_ACCEPT}
+                  disabled={kycBusy !== null}
+                  onChange={(event) => {
+                    void onKycFile("id", event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                  className="field-input file:mr-3 file:border-0 file:bg-ash file:px-3 file:py-1.5 file:text-xs file:font-bold file:tracking-[0.12em] file:text-coal file:uppercase"
+                />
+                <p className="mt-1 text-xs text-bone-dim">
+                  {kycBusy === "id"
+                    ? "Processing…"
+                    : kycIdName
+                      ? `${kycIdName} · ${kycLabel(kycIdDocument)}`
+                      : "Required"}
+                </p>
+              </label>
+              <label className="block">
+                <span className="eyebrow mb-2 block">RDB certificate</span>
+                <input
+                  type="file"
+                  accept={KYC_ACCEPT}
+                  disabled={kycBusy !== null}
+                  onChange={(event) => {
+                    void onKycFile("rdb", event.target.files?.[0]);
+                    event.target.value = "";
+                  }}
+                  className="field-input file:mr-3 file:border-0 file:bg-ash file:px-3 file:py-1.5 file:text-xs file:font-bold file:tracking-[0.12em] file:text-coal file:uppercase"
+                />
+                <p className="mt-1 text-xs text-bone-dim">
+                  {kycBusy === "rdb"
+                    ? "Processing…"
+                    : kycRdbName
+                      ? `${kycRdbName} · ${kycLabel(kycRdbCertificate)}`
+                      : "Required"}
+                </p>
+              </label>
+            </div>
+          ) : null}
+
+          {step === 5 ? (
+            <div className="space-y-5">
+              <div>
+                <p className="eyebrow">Step 5</p>
+                <h2 className="font-display mt-1 text-2xl tracking-[0.04em]">
                   Review & submit
                 </h2>
               </div>
@@ -469,6 +579,16 @@ export default function BrandSignupForm() {
                     {ownerName} · {email}
                   </dd>
                 </div>
+                <div>
+                  <dt className="text-[0.65rem] tracking-[0.14em] text-bone-dim uppercase">
+                    KYC
+                  </dt>
+                  <dd className="mt-1 text-coal">
+                    National ID/passport attached
+                    {kycIdName ? ` (${kycIdName})` : ""} · RDB certificate attached
+                    {kycRdbName ? ` (${kycRdbName})` : ""}
+                  </dd>
+                </div>
               </dl>
               <p className="text-sm leading-relaxed text-bone-dim">
                 Next we email a 6-digit code. After verify, your application waits for
@@ -493,11 +613,12 @@ export default function BrandSignupForm() {
                 Back
               </button>
             ) : null}
-            {step < 4 ? (
+            {step < 5 ? (
               <button
                 type="button"
                 onClick={goNext}
-                className="craft-btn flex-1 bg-rust px-6 py-4 text-xs tracking-[0.2em] text-bone uppercase sm:flex-none"
+                disabled={kycBusy !== null}
+                className="craft-btn flex-1 bg-rust px-6 py-4 text-xs tracking-[0.2em] text-bone uppercase disabled:opacity-60 sm:flex-none"
               >
                 Continue
               </button>

@@ -1,3 +1,4 @@
+import { parseCredits, type Credit } from "./credits.js";
 import type { Ad, Brand, Event, Product as DbProduct } from "../generated/prisma/client.js";
 
 export type VendorDto = {
@@ -44,6 +45,8 @@ export type ProductDto = {
   brandLocation?: string;
   views: number;
   createdAt?: string;
+  updatedAt?: string;
+  credits?: Credit[];
 };
 
 export type EventDto = {
@@ -60,6 +63,7 @@ export type EventDto = {
   ticketsLeft: number;
   image: { src: string; alt: string };
   vendorIds: string[];
+  credits?: Credit[];
 };
 
 export type AdDto = {
@@ -74,6 +78,7 @@ export type AdDto = {
   ctaHref: string;
   ctaLabel: string;
   featured?: boolean;
+  credits?: Credit[];
 };
 
 export function mapBrand(brand: Brand): VendorDto {
@@ -125,6 +130,8 @@ export function mapProduct(
     brandLocation: brand?.location,
     views: row.views,
     createdAt: row.createdAt?.toISOString?.() ?? undefined,
+    updatedAt: row.updatedAt?.toISOString?.() ?? undefined,
+    credits: parseCredits(row.credits),
   };
 }
 
@@ -143,6 +150,7 @@ export function mapEvent(row: Event): EventDto {
     ticketsLeft: row.ticketsLeft,
     image: { src: row.imageSrc, alt: row.imageAlt },
     vendorIds: [row.brandId],
+    credits: parseCredits(row.credits),
   };
 }
 
@@ -159,5 +167,6 @@ export function mapAd(row: Ad & { brand?: Brand }): AdDto {
     ctaHref: row.ctaHref,
     ctaLabel: row.ctaLabel,
     featured: row.featured,
+    credits: parseCredits(row.credits),
   };
 }

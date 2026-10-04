@@ -5,9 +5,9 @@ export const POSITIONING =
   "Shop products, book event tickets, and run ads · MADE IN AFREEKA, all in one place.";
 
 export const site = {
-  name: "BONE KOBOYI",
-  shortName: "BK",
-  displayName: "BONE_KOBOYI",
+  name: "ICYACUMI",
+  shortName: "ICY",
+  displayName: "ICYACUMI",
   tagline: "Shop. Events. Ads.",
   madeIn: "MADE IN AFREEKA",
   positioning: POSITIONING,
@@ -16,11 +16,11 @@ export const site = {
   currency: "RWF",
   freeShippingThreshold: 50000,
   shippingRate: 2500,
-  email: "fit@bonekoboyi.com",
+  email: "fit@icyacumi.com",
   phone: null as string | null,
   logo: {
     src: "/brand/logo.png",
-    alt: "BONE KOBOYI / MADE IN AFREEKA mark",
+    alt: "ICYACUMI / MADE IN AFREEKA mark",
     width: 530,
     height: 564,
   },
@@ -34,6 +34,7 @@ export const site = {
   footer: {
     shop: [
       { href: "/shop", label: "Shop", icon: "cloth" as CultureIconName },
+      { href: "/shop/sale", label: "Sale", icon: "sun" as CultureIconName },
       { href: "/brands", label: "Brands", icon: "necklace" as CultureIconName },
       { href: "/events", label: "Events", icon: "drum" as CultureIconName },
       { href: "/ads", label: "Ads", icon: "mask" as CultureIconName },
@@ -42,6 +43,7 @@ export const site = {
       { href: "/art", label: "Art", icon: "textile" as CultureIconName },
     ],
     help: [
+      { href: "/search", label: "Search", icon: "search" as CultureIconName },
       { href: "/track", label: "Track order", icon: "spiral" as CultureIconName },
       { href: "/contact", label: "Contact", icon: "drum" as CultureIconName },
       { href: "/about", label: "About", icon: "hut" as CultureIconName },

@@ -3,7 +3,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Container } from "@/components/container";
+import { CreditsList } from "@/components/credits-list";
 import { CultureIcon, type CultureIconName } from "@/components/culture-icons";
+import { JsonLd } from "@/components/json-ld";
 import { MarketplaceProductGrid } from "@/components/marketplace-product-grid";
 import { TicketBuyButton } from "@/components/ticket-buy-button";
 import {
@@ -14,6 +16,11 @@ import {
 } from "@/lib/marketplace";
 import { formatPrice } from "@/lib/format";
 import { getProducts } from "@/lib/products";
+import {
+  breadcrumbJsonLd,
+  buildPageMetadata,
+  eventJsonLd,
+} from "@/lib/seo";
 import { site } from "@/lib/site";
 
 type Params = Promise<{ slug: string }>;
@@ -31,10 +38,21 @@ export async function generateMetadata({
   const { slug } = await params;
   const event = await getEventBySlug(slug);
   if (!event) return { title: "Event" };
-  return {
+  return buildPageMetadata({
     title: event.title,
-    description: event.summary,
-  };
+    description: `${event.summary} · ${formatEventDate(event.date)} · ${event.venue}, ${event.city}`,
+    path: `/events/${event.slug}`,
+    image: event.image.src,
+    imageAlt: event.image.alt,
+    keywords: [
+      event.title,
+      event.city,
+      event.venue,
+      "event tickets",
+      site.name,
+      site.madeIn,
+    ],
+  });
 }
 
 export default async function EventDetailPage({ params }: { params: Params }) {
@@ -62,6 +80,28 @@ export default async function EventDetailPage({ params }: { params: Params }) {
 
   return (
     <Container className="py-10 lg:py-14">
+      <JsonLd
+        data={[
+          breadcrumbJsonLd([
+            { name: "Home", path: "/" },
+            { name: "Events", path: "/events" },
+            { name: event.title, path: `/events/${event.slug}` },
+          ]),
+          eventJsonLd({
+            name: event.title,
+            description: event.summary,
+            slug: event.slug,
+            startDate: event.date,
+            time: event.time,
+            venue: event.venue,
+            city: event.city,
+            image: event.image.src,
+            price: event.price,
+            availability: event.ticketsLeft > 0 ? "InStock" : "SoldOut",
+          }),
+        ]}
+      />
+
       <nav className="text-xs tracking-[0.14em] text-bone-dim uppercase">
         <Link href="/events" className="hover:text-rust">
           Events
@@ -111,6 +151,8 @@ export default async function EventDetailPage({ params }: { params: Params }) {
           <div className="mt-8">
             <TicketBuyButton event={event} />
           </div>
+
+          <CreditsList credits={event.credits} title="Night credits" />
         </div>
       </div>
 

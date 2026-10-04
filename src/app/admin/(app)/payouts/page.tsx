@@ -9,6 +9,7 @@ import { usePagination } from "@/lib/pagination";
 type BrandPayoutRow = {
   id: string;
   amount: number;
+  feeAmount?: number;
   currency: string;
   status: string;
   note: string | null;
@@ -160,6 +161,7 @@ export default function AdminPayoutsPage() {
       brandPayouts.map((payout) => ({
         brand: payout.brand.name,
         amount: payout.amount,
+        fee: payout.feeAmount ?? 0,
         status: payout.status,
         note: payout.note ?? "",
         createdAt: new Date(payout.createdAt).toLocaleDateString("en-GB"),
@@ -188,18 +190,20 @@ export default function AdminPayoutsPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Payouts</h1>
           <p className="mt-1 text-sm text-[var(--portal-muted)]">
-            Withdraw your commission, and approve brand payout requests.
+            Withdraw your commission, and approve brand payout requests. Brand
+            withdrawals take a flat 350 RWF fee from their earnings.
           </p>
         </div>
         {tab === "brands" ? (
           <ExportPdfButton
             title="Brand payouts"
             columns={[
-              { key: "brand", label: "Brand", width: 120 },
-              { key: "amount", label: "Amount (RWF)", width: 80 },
+              { key: "brand", label: "Brand", width: 110 },
+              { key: "amount", label: "Send (RWF)", width: 70 },
+              { key: "fee", label: "Fee (RWF)", width: 60 },
               { key: "status", label: "Status", width: 70 },
-              { key: "note", label: "Note", width: 140 },
-              { key: "createdAt", label: "Date", width: 80 },
+              { key: "note", label: "Note", width: 130 },
+              { key: "createdAt", label: "Date", width: 70 },
             ]}
             rows={brandExportRows}
           />
@@ -455,7 +459,16 @@ export default function AdminPayoutsPage() {
                 </tbody>
               </table>
             </div>
-            <AdminPagination {...platformPagination} />
+            <AdminPagination
+              page={platformPagination.page}
+              pageSize={platformPagination.pageSize}
+              total={platformPagination.total}
+              totalPages={platformPagination.totalPages}
+              start={platformPagination.start}
+              end={platformPagination.end}
+              onPageChange={platformPagination.setPage}
+              onPageSizeChange={platformPagination.setPageSize}
+            />
           </section>
         </>
       ) : (
@@ -464,7 +477,8 @@ export default function AdminPayoutsPage() {
             <thead>
               <tr className="text-xs text-[var(--portal-muted)]">
                 <th className="px-5 py-3 font-medium">Brand</th>
-                <th className="px-3 py-3 font-medium">Amount</th>
+                <th className="px-3 py-3 font-medium">Send to brand</th>
+                <th className="px-3 py-3 font-medium">Fee</th>
                 <th className="px-3 py-3 font-medium">Status</th>
                 <th className="px-5 py-3 font-medium">Actions</th>
               </tr>
@@ -480,9 +494,17 @@ export default function AdminPayoutsPage() {
                     <p className="text-xs text-[var(--portal-muted)]">
                       {new Date(payout.createdAt).toLocaleDateString()}
                     </p>
+                    {payout.note ? (
+                      <p className="mt-1 max-w-xs text-xs text-[var(--portal-muted)]">
+                        {payout.note}
+                      </p>
+                    ) : null}
                   </td>
                   <td className="px-3 py-3.5 font-semibold tabular-nums">
                     {formatPrice(payout.amount)}
+                  </td>
+                  <td className="px-3 py-3.5 tabular-nums text-[var(--portal-muted)]">
+                    {formatPrice(payout.feeAmount ?? 0)}
                   </td>
                   <td className="px-3 py-3.5 capitalize">{payout.status}</td>
                   <td className="px-5 py-3.5">
@@ -515,16 +537,26 @@ export default function AdminPayoutsPage() {
               {brandPayouts.length === 0 ? (
                 <tr>
                   <td
-                    colSpan={4}
+                    colSpan={5}
                     className="px-5 py-8 text-sm text-[var(--portal-muted)]"
                   >
-                    No brand payout requests yet.
+                    No brand payout requests yet. Each brand withdrawal takes a flat
+                    350 RWF fee from their earnings.
                   </td>
                 </tr>
               ) : null}
             </tbody>
           </table>
-          <AdminPagination {...brandPagination} />
+          <AdminPagination
+            page={brandPagination.page}
+            pageSize={brandPagination.pageSize}
+            total={brandPagination.total}
+            totalPages={brandPagination.totalPages}
+            start={brandPagination.start}
+            end={brandPagination.end}
+            onPageChange={brandPagination.setPage}
+            onPageSizeChange={brandPagination.setPageSize}
+          />
         </section>
       )}
     </div>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
+import { CultureIcon } from "@/components/culture-icons";
 import { loginHref } from "@/lib/auth-redirect";
 
 export function AuthNavLinks({ onNavigate }: { onNavigate?: () => void }) {
@@ -52,9 +53,11 @@ export function AuthNavLinks({ onNavigate }: { onNavigate?: () => void }) {
           router.push("/");
           router.refresh();
         }}
-        className="font-nav text-[0.85rem] text-bone-dim hover:text-rust"
+        className="inline-flex min-h-9 min-w-9 items-center justify-center text-bone-dim transition-colors hover:text-rust"
+        aria-label="Log out"
+        title="Log out"
       >
-        Out
+        <CultureIcon name="logout" className="h-5 w-5" />
       </button>
     </div>
   );

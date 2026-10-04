@@ -1,10 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { AdminPagination } from "@/components/admin-pagination";
-import { useAuth } from "@/components/auth-provider";
 import { ExportPdfButton } from "@/components/export-pdf-button";
 import { formatPrice } from "@/lib/format";
 import { usePagination } from "@/lib/pagination";
@@ -47,15 +45,11 @@ type CommissionReport = {
 };
 
 export default function AdminSettingsPage() {
-  const router = useRouter();
-  const { logout } = useAuth();
   const [settings, setSettings] = useState<Settings | null>(null);
   const [report, setReport] = useState<CommissionReport | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
-  const [passwordPending, setPasswordPending] = useState(false);
 
   const load = useCallback(async () => {
     const [settingsRes, reportRes] = await Promise.all([
@@ -123,44 +117,6 @@ export default function AdminSettingsPage() {
     setSettings(data.settings);
     setMessage("Commission rates updated for all brands.");
     await load();
-  }
-
-  async function onChangePassword(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setPasswordPending(true);
-    setPasswordError(null);
-    setMessage(null);
-    const form = new FormData(event.currentTarget);
-    const nextPassword = String(form.get("nextPassword") ?? "");
-    const confirm = String(form.get("confirm") ?? "");
-    if (nextPassword !== confirm) {
-      setPasswordError("New passwords do not match.");
-      setPasswordPending(false);
-      return;
-    }
-    try {
-      const response = await fetch("/api/auth/change-password", {
-        method: "POST",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          currentPassword: form.get("currentPassword"),
-          nextPassword,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        setPasswordError(data.error ?? "Could not update password.");
-        return;
-      }
-      await logout();
-      router.push(data.redirectTo ?? "/login?changed=1");
-      router.refresh();
-    } catch {
-      setPasswordError("Could not reach the server.");
-    } finally {
-      setPasswordPending(false);
-    }
   }
 
   if (!settings) {
@@ -424,66 +380,19 @@ export default function AdminSettingsPage() {
       </div>
 
       <section className="portal-card max-w-lg space-y-3 p-5 sm:p-6">
-        <h2 className="text-sm font-semibold">Change password</h2>
-        <p className="text-xs text-[var(--portal-muted)]">
-          You’ll be signed out after updating. Forgot it?{" "}
-          <Link href="/forgot-password" className="underline">
-            Reset by email
-          </Link>
-          .
+        <h2 className="text-sm font-semibold">Super admin password</h2>
+        <p className="text-xs leading-5 text-[var(--portal-muted)]">
+          Change your own password on Profile, or set / reset any super admin
+          password on the team page.
         </p>
-        <form onSubmit={onChangePassword} className="space-y-3">
-          <label className="block">
-            <span className="mb-1.5 block text-xs text-[var(--portal-muted)]">
-              Current password
-            </span>
-            <input
-              name="currentPassword"
-              type="password"
-              required
-              autoComplete="current-password"
-              className="portal-input"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs text-[var(--portal-muted)]">
-              New password
-            </span>
-            <input
-              name="nextPassword"
-              type="password"
-              required
-              minLength={6}
-              autoComplete="new-password"
-              className="portal-input"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1.5 block text-xs text-[var(--portal-muted)]">
-              Confirm new password
-            </span>
-            <input
-              name="confirm"
-              type="password"
-              required
-              minLength={6}
-              autoComplete="new-password"
-              className="portal-input"
-            />
-          </label>
-          {passwordError ? (
-            <p className="rounded-2xl bg-orange-50 px-4 py-3 text-sm text-[var(--portal-accent)]">
-              {passwordError}
-            </p>
-          ) : null}
-          <button
-            type="submit"
-            disabled={passwordPending}
-            className="portal-btn portal-btn--ghost disabled:opacity-60"
-          >
-            {passwordPending ? "Updating…" : "Update password"}
-          </button>
-        </form>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/admin/profile" className="portal-btn portal-btn--ghost !text-xs">
+            My password →
+          </Link>
+          <Link href="/admin/admins" className="portal-btn portal-btn--ghost !text-xs">
+            Team passwords →
+          </Link>
+        </div>
       </section>
     </div>
   );

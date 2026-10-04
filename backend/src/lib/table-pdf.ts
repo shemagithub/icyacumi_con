@@ -22,7 +22,7 @@ export async function buildTablePdf(input: TablePdfInput): Promise<Buffer> {
       margin: 36,
       info: {
         Title: input.title,
-        Author: "BONE KOBOYI Admin",
+        Author: "ICYACUMI Admin",
       },
     });
 

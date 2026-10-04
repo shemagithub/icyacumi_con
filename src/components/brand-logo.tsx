@@ -13,10 +13,10 @@ function Wordmark({ name, madeIn, showTagline }: { name: string; madeIn: string;
       {head ? (
         <>
           {head}{" "}
-          <span className="font-extrabold tracking-[0.04em] text-rust">{tail}</span>
+          <span className="tracking-[0.04em] text-rust">{tail}</span>
         </>
       ) : (
-        <span className="font-extrabold tracking-[0.04em] text-rust">{tail}</span>
+        <span className="tracking-[0.04em] text-rust">{tail}</span>
       )}
       {showTagline ? (
         <span className="mt-1 block text-[0.5em] font-semibold tracking-[0.16em] text-bone-dim uppercase">

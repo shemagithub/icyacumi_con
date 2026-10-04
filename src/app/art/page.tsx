@@ -32,7 +32,7 @@ export default function ArtPage() {
           <div className="relative aspect-[4/5] overflow-hidden bg-ash lg:aspect-auto lg:min-h-[70vh]">
             <Image
               src="/editorial/look-04.png"
-              alt="BONE KOBOYI campaign look · dye-panel craft and ceremonial headpiece"
+              alt="ICYACUMI campaign look · dye-panel craft and ceremonial headpiece"
               fill
               priority
               sizes="(min-width: 1024px) 50vw, 100vw"

@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { AdminPagination } from "@/components/admin-pagination";
+import { CreditsEditor } from "@/components/credits-editor";
+import { parseCredits } from "@/lib/credits";
 import { usePagination } from "@/lib/pagination";
-import type { AdCreative } from "@/lib/types";
+import type { AdCreative, Credit } from "@/lib/types";
 
 const LOOKS = [
   "/editorial/look-01.png",
@@ -17,6 +19,7 @@ export default function PortalAdsPage() {
   const [ads, setAds] = useState<AdCreative[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
+  const [credits, setCredits] = useState<Credit[]>([]);
   const pagination = usePagination(ads);
 
   const load = useCallback(async () => {
@@ -48,6 +51,7 @@ export default function PortalAdsPage() {
         mediaSrc: form.get("mediaSrc"),
         mediaUrl: form.get("mediaUrl") || undefined,
         featured: true,
+        credits: parseCredits(credits),
       }),
     });
     const data = await response.json();
@@ -57,6 +61,7 @@ export default function PortalAdsPage() {
       return;
     }
     event.currentTarget.reset();
+    setCredits([]);
     await load();
   }
 
@@ -98,6 +103,7 @@ export default function PortalAdsPage() {
             placeholder="Video / link (optional)"
             className="portal-input"
           />
+          <CreditsEditor value={credits} onChange={setCredits} />
           <button
             type="submit"
             disabled={pending}
@@ -120,6 +126,14 @@ export default function PortalAdsPage() {
                   <span className="portal-badge portal-badge--info capitalize">{ad.type}</span>
                   <p className="mt-2 font-semibold">{ad.title}</p>
                   <p className="mt-1 text-sm text-[var(--portal-muted)]">{ad.summary}</p>
+                  {ad.credits?.length ? (
+                    <p className="mt-2 text-xs text-[var(--portal-muted)]">
+                      Credits:{" "}
+                      {ad.credits
+                        .map((credit) => `${credit.role} · ${credit.name}`)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
                 </div>
                 <div className="flex gap-2">
                   <Link href="/ads" className="portal-btn portal-btn--ghost !py-2 !text-xs">

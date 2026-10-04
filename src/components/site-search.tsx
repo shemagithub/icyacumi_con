@@ -356,11 +356,11 @@ export function SiteSearch() {
                 <div className="flex flex-wrap items-center justify-between gap-2 border-t border-ash-line bg-ash/30 px-4 py-2.5 text-[0.65rem] tracking-[0.12em] text-bone-dim uppercase">
                   <span>{hits} result{hits === 1 ? "" : "s"}</span>
                   <Link
-                    href="/shop"
+                    href={`/search?q=${encodeURIComponent(query.trim())}`}
                     onClick={close}
                     className="font-bold text-coal underline-offset-2 hover:text-rust hover:underline"
                   >
-                    Open shop
+                    View all results
                   </Link>
                 </div>
               ) : null}

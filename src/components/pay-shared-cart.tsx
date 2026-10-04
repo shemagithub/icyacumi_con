@@ -20,34 +20,34 @@ type SharedPayload = {
 
 function normalizeLines(raw: unknown): CartLine[] {
   if (!Array.isArray(raw)) return [];
-  return raw
-    .map((line) => {
-      if (typeof line !== "object" || line === null) return null;
-      const item = line as Record<string, unknown>;
-      const productId = String(item.productId ?? "");
-      const name = String(item.name ?? "");
-      if (!productId || !name) return null;
-      const image =
-        item.image && typeof item.image === "object"
-          ? {
-              src: String((item.image as { src?: string }).src ?? "/brand/logo.png"),
-              alt: String((item.image as { alt?: string }).alt ?? name),
-            }
-          : { src: "/brand/logo.png", alt: name };
-      return {
-        id: String(item.id ?? `${productId}:${item.size}:${item.color}`),
-        productId,
-        slug: String(item.slug ?? productId),
-        name,
-        price: Math.max(0, Math.round(Number(item.price) || 0)),
-        size: String(item.size ?? "OS") as Size,
-        color: String(item.color ?? "-"),
-        image,
-        quantity: Math.max(1, Math.min(99, Math.round(Number(item.quantity) || 1))),
-        kind: item.kind === "ticket" ? ("ticket" as const) : ("product" as const),
-      };
-    })
-    .filter((line): line is CartLine => line !== null);
+  const lines: CartLine[] = [];
+  for (const line of raw) {
+    if (typeof line !== "object" || line === null) continue;
+    const item = line as Record<string, unknown>;
+    const productId = String(item.productId ?? "");
+    const name = String(item.name ?? "");
+    if (!productId || !name) continue;
+    const image =
+      item.image && typeof item.image === "object"
+        ? {
+            src: String((item.image as { src?: string }).src ?? "/brand/logo.png"),
+            alt: String((item.image as { alt?: string }).alt ?? name),
+          }
+        : { src: "/brand/logo.png", alt: name };
+    lines.push({
+      id: String(item.id ?? `${productId}:${item.size}:${item.color}`),
+      productId,
+      slug: String(item.slug ?? productId),
+      name,
+      price: Math.max(0, Math.round(Number(item.price) || 0)),
+      size: String(item.size ?? "OS") as Size,
+      color: String(item.color ?? "-"),
+      image,
+      quantity: Math.max(1, Math.min(99, Math.round(Number(item.quantity) || 1))),
+      kind: item.kind === "ticket" ? "ticket" : "product",
+    });
+  }
+  return lines;
 }
 
 export function PaySharedCart({ token }: { token: string }) {

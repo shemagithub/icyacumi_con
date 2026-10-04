@@ -27,16 +27,17 @@ export function SiteSettingsProvider({
   );
 
   useEffect(() => {
-    if (initial) {
-      setSettings(initial);
-      return;
-    }
+    if (initial) setSettings(initial);
+  }, [initial]);
+
+  useEffect(() => {
     let cancelled = false;
-    void (async () => {
+
+    async function refresh() {
       try {
         const response = await fetch("/api/catalog/site-settings", {
-          next: { revalidate: 30 },
-        } as RequestInit);
+          cache: "no-store",
+        });
         if (!response.ok) return;
         const data = (await response.json()) as {
           settings?: Partial<PublicSiteSettings>;
@@ -45,11 +46,21 @@ export function SiteSettingsProvider({
       } catch {
         /* keep defaults / initial */
       }
-    })();
+    }
+
+    void refresh();
+    const onFocus = () => void refresh();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void refresh();
+    };
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [initial]);
+  }, []);
 
   return (
     <SiteSettingsContext.Provider value={settings}>

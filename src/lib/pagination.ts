@@ -51,6 +51,8 @@ export function usePagination<T>(
     ...result,
     setPage,
     setPageSize,
+    onPageChange: setPage,
+    onPageSizeChange: setPageSize,
     goFirst: () => setPage(1),
     goPrev: () => setPage((value) => Math.max(1, value - 1)),
     goNext: () => setPage((value) => Math.min(result.totalPages, value + 1)),

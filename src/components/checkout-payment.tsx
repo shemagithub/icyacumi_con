@@ -6,19 +6,24 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { CultureIcon } from "@/components/culture-icons";
 import { CouponField } from "@/components/coupon-field";
+import { PaymentsReadyBanner } from "@/components/payments-ready-banner";
 import { useCart } from "@/components/cart-provider";
 import {
-  clearCheckoutDraft,
   PAYMENT_METHODS,
   paymentMethodLabel,
   readCheckoutDraft,
   saveCheckoutDraft,
+  savePaymentRef,
   type AppliedCoupon,
   type CheckoutDraft,
   type PaymentMethodId,
 } from "@/lib/checkout-draft";
-import { clearBuyNowLines } from "@/lib/buy-now";
 import { formatPrice } from "@/lib/format";
+import {
+  finishPaidCheckout,
+  initiateXentriPay,
+  pollXentriPayStatus,
+} from "@/lib/xentripay-checkout";
 import { site } from "@/lib/site";
 
 export function CheckoutPayment() {
@@ -26,6 +31,7 @@ export function CheckoutPayment() {
   const cart = useCart();
   const [draft, setDraft] = useState<CheckoutDraft | null>(null);
   const [ready, setReady] = useState(false);
+  const [paymentsReady, setPaymentsReady] = useState<boolean | null>(null);
   const [method, setMethod] = useState<PaymentMethodId | null>(null);
   const [phone, setPhone] = useState("");
   const [coupon, setCoupon] = useState<AppliedCoupon | null>(null);
@@ -39,6 +45,26 @@ export function CheckoutPayment() {
     if (loaded?.customer.phone) setPhone(loaded.customer.phone);
     if (loaded?.coupon) setCoupon(loaded.coupon);
     setReady(true);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const response = await fetch("/api/catalog/payments/ready", {
+          cache: "no-store",
+        });
+        const data = (await response.json().catch(() => ({}))) as {
+          configured?: boolean;
+        };
+        if (!cancelled) setPaymentsReady(Boolean(response.ok && data.configured));
+      } catch {
+        if (!cancelled) setPaymentsReady(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   function persistCoupon(next: AppliedCoupon | null) {
@@ -80,105 +106,49 @@ export function CheckoutPayment() {
 
   const selected = PAYMENT_METHODS.find((entry) => entry.id === method) ?? null;
 
-  async function completeMobileOrDemo(paymentMethod: PaymentMethodId) {
+  function goToPaidOrder(order: { reference: string }) {
+    finishPaidCheckout(order, cart);
+  }
+
+  async function payWithXentriPay(paymentMethod: PaymentMethodId) {
     if (!draft) return;
     const customer = {
       ...draft.customer,
       phone: phone.trim() || draft.customer.phone,
     };
 
-    if (draft.sharedCartToken) {
-      const response = await fetch("/api/orders/complete-shared", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          token: draft.sharedCartToken,
-          customer,
-          paymentMethod,
-          couponCode: coupon?.code,
-        }),
-      });
-      const data = await response.json();
-      if (!response.ok) {
-        throw new Error(data.error ?? "Could not complete payment.");
-      }
-      clearCheckoutDraft();
-      clearBuyNowLines();
-      window.location.href = `/checkout/success?ref=${encodeURIComponent(data.order.reference)}`;
-      return;
-    }
-
-    const response = await fetch("/api/orders/complete-demo", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: draft.items.map((item) => ({
-          productId: item.productId,
-          size: item.size,
-          color: item.color,
-          quantity: item.quantity,
-          kind: item.kind,
-        })),
-        customer,
-        paymentMethod,
-        couponCode: coupon?.code,
-      }),
+    const started = await initiateXentriPay({
+      items: draft.items.map((item) => ({
+        productId: item.productId,
+        size: item.size,
+        color: item.color,
+        quantity: item.quantity,
+        kind: item.kind,
+      })),
+      customer,
+      paymentMethod,
+      couponCode: coupon?.code,
+      sharedCartToken: draft.sharedCartToken || undefined,
     });
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error ?? "Could not complete payment.");
-    }
-    clearCheckoutDraft();
-    clearBuyNowLines();
-    if (!draft.buyNow) {
-      cart.clear();
-    }
-    window.location.href = `/checkout/success?ref=${encodeURIComponent(data.order.reference)}`;
-  }
 
-  async function payWithCard() {
-    if (!draft) return;
-    const response = await fetch("/api/checkout", {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        items: draft.items.map((item) => ({
-          productId: item.productId,
-          size: item.size,
-          color: item.color,
-          quantity: item.quantity,
-          kind: item.kind,
-        })),
-        customer: draft.customer,
-        sharedCartToken: draft.sharedCartToken || undefined,
-        couponCode: coupon?.code,
-      }),
-    });
-    const data: {
-      url?: string;
-      error?: string;
-      demoAvailable?: boolean;
-    } = await response.json();
+    savePaymentRef(started.customerRef);
 
-    if (response.ok && data.url) {
-      const wasBuyNow = Boolean(draft.buyNow);
-      clearCheckoutDraft();
-      clearBuyNowLines();
-      if (!wasBuyNow) {
-        cart.clear();
+    if (started.status === "SUCCESS" && started.order) {
+      goToPaidOrder(started.order);
+      return;
+    }
+
+    if (paymentMethod === "card") {
+      if (!started.redirectUrl) {
+        throw new Error("Card page URL missing from XentriPay. Try again.");
       }
-      window.location.href = data.url;
+      window.location.href = started.redirectUrl;
       return;
     }
 
-    if (response.status === 503 && data.demoAvailable) {
-      await completeMobileOrDemo("card");
-      return;
-    }
-
-    throw new Error(data.error ?? "Card checkout is unavailable right now.");
+    setWaitingPrompt(true);
+    const order = await pollXentriPayStatus(started.customerRef);
+    goToPaidOrder(order);
   }
 
   async function onPay() {
@@ -187,21 +157,14 @@ export function CheckoutPayment() {
       return;
     }
     if (selected?.needsPhone && phone.trim().length < 8) {
-      setError("Enter the mobile money phone number (at least 8 digits).");
+      setError("Enter a Rwanda phone number (07xxxxxxxx).");
       return;
     }
 
     setPending(true);
     setError(null);
     try {
-      if (method === "card") {
-        await payWithCard();
-        return;
-      }
-
-      setWaitingPrompt(true);
-      await new Promise((resolve) => setTimeout(resolve, 1600));
-      await completeMobileOrDemo(method);
+      await payWithXentriPay(method);
     } catch (err) {
       setWaitingPrompt(false);
       setError(err instanceof Error ? err.message : "Payment failed.");
@@ -241,6 +204,8 @@ export function CheckoutPayment() {
   return (
     <div className="mt-10 grid gap-10 lg:grid-cols-[1.15fr_0.85fr] lg:gap-14">
       <div className="space-y-8">
+        <PaymentsReadyBanner />
+
         <section className="craft-panel bg-bone/95 p-6 sm:p-8">
           <p className="eyebrow">Shipping to</p>
           <p className="font-display mt-2 text-2xl tracking-[0.04em]">
@@ -278,7 +243,9 @@ export function CheckoutPayment() {
             </div>
           </div>
           <p className="mt-3 text-sm text-bone-dim">
-            Choose MTN MoMo, Airtel Money, or card to finish your order.
+            Choose MTN MoMo, Airtel Money, or card. MoMo sends a prompt to your
+            phone; card opens XentriPay’s secure page. Orders are confirmed only
+            after payment succeeds.
           </p>
 
           <div className="mt-6">
@@ -337,7 +304,7 @@ export function CheckoutPayment() {
           {selected?.needsPhone ? (
             <label className="mt-6 block">
               <span className="eyebrow mb-2 block">
-                {selected.label} phone number
+                {method === "card" ? "Contact phone number" : `${selected.label} phone number`}
               </span>
               <input
                 type="tel"
@@ -350,7 +317,9 @@ export function CheckoutPayment() {
                 placeholder="07xxxxxxxx"
               />
               <span className="mt-2 block text-xs text-bone-dim">
-                You’ll get a prompt on this number to approve the payment.
+                {method === "card"
+                  ? "Required by XentriPay. Use a Rwanda number (07xxxxxxxx)."
+                  : "You’ll get a prompt on this number to approve the payment."}
               </span>
             </label>
           ) : null}
@@ -360,8 +329,10 @@ export function CheckoutPayment() {
               role="status"
               className="mt-6 border border-coal/15 bg-ash/40 px-4 py-3 text-sm text-coal"
             >
-              Waiting for approval on {paymentMethodLabel(method!)}…
-              Confirm the prompt on your phone.
+              Waiting for {paymentMethodLabel(method!)} confirmation…
+              {method === "card"
+                ? " Finish on the card page, then this screen will update."
+                : " Confirm the prompt on your phone."}
             </p>
           ) : null}
 
@@ -373,17 +344,19 @@ export function CheckoutPayment() {
 
           <button
             type="button"
-            disabled={pending || !method}
+            disabled={pending || !method || paymentsReady === false}
             onClick={() => void onPay()}
             className="craft-btn mt-8 w-full bg-rust px-6 py-4 text-xs tracking-[0.2em] text-bone uppercase disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {pending
-              ? method === "card"
-                ? "Opening secure card pay…"
-                : "Processing…"
-              : method
-                ? `Pay with ${paymentMethodLabel(method)}`
-                : "Select a payment option"}
+            {paymentsReady === false
+              ? "Payments unavailable"
+              : pending
+                ? method === "card"
+                  ? "Opening secure card pay…"
+                  : "Processing…"
+                : method
+                  ? `Pay with ${paymentMethodLabel(method)}`
+                  : "Select a payment option"}
           </button>
         </section>
       </div>

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `Payout` ADD COLUMN `feeAmount` INTEGER NOT NULL DEFAULT 0;

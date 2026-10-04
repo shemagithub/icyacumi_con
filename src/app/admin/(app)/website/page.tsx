@@ -136,15 +136,27 @@ export default function AdminWebsitePage() {
     <div className="space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-3">
         <div>
+          <p className="admin-section-title">Client website</p>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
             Website
           </h1>
           <p className="mt-1 text-sm text-[var(--portal-muted)]">
-            Company logo, name, contact email & phone, social links, and About page copy
-            shown across the public site.
+            Logo, name, contact, socials, and About copy on the public storefront.
+            Grids, frames, background, and type live under Design.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
+          <Link href="/admin/design" className="portal-btn portal-btn--ghost !py-2 !text-xs">
+            Edit look & feel
+          </Link>
+          <Link
+            href="/"
+            target="_blank"
+            rel="noreferrer"
+            className="portal-btn portal-btn--ghost !py-2 !text-xs"
+          >
+            View site
+          </Link>
           <Link
             href="/about"
             target="_blank"
@@ -299,7 +311,7 @@ export default function AdminWebsitePage() {
                 onChange={(event) => update("email", event.target.value)}
                 required
                 className="portal-input"
-                placeholder="fit@bonekoboyi.com"
+                placeholder="fit@icyacumi.com"
               />
             </label>
             <label className="block">
@@ -356,8 +368,8 @@ export default function AdminWebsitePage() {
                   className="portal-input"
                   placeholder={
                     key === "website"
-                      ? "https://bonekoboyi.com"
-                      : `https://${key}.com/bonekoboyi`
+                      ? "https://icyacumi.com"
+                      : `https://${key}.com/icyacumi`
                   }
                 />
               </label>

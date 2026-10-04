@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  {
+    rules: {
+      // Client pages fetch data on mount via useEffect → setState in the
+      // async callback. This rule treats that as a sync cascade and floods
+      // every admin/portal page with false positives.
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -28,6 +28,11 @@ model Brand {
   /** pending | approved | rejected · self-signup waits for admin approval. */
   status           String      @default("pending") @db.VarChar(20)
   applicationNote  String?     @db.VarChar(1000)
+  /** National ID / passport scan · required for self-signup KYC. */
+  kycIdDocument    String?     @db.LongText
+  /** Rwanda Development Board (RDB) certificate scan · required for self-signup KYC. */
+  kycRdbCertificate String?    @db.LongText
+  kycSubmittedAt   DateTime?
   approvedAt       DateTime?
   rejectedReason   String?     @db.VarChar(500)
   createdAt        DateTime    @default(now())
@@ -137,6 +142,8 @@ model SiteSettings {
   twitter            String?  @db.VarChar(255)
   youtube            String?  @db.VarChar(255)
   website            String?  @db.VarChar(255)
+  /** JSON look-and-feel for the public storefront (grids, fonts, background). */
+  themeJson          String?  @db.LongText
   updatedAt          DateTime @updatedAt
   createdAt          DateTime @default(now())
 }
@@ -182,6 +189,8 @@ model Product {
   /** Units available to sell. When 0, product is sold out (inStock=false). */
   stockQuantity  Int      @default(0)
   views          Int      @default(0)
+  /** People who worked the piece · public shout-outs. */
+  credits        Json     @default("[]")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -206,6 +215,7 @@ model Event {
   ticketsLeft Int
   imageSrc    String   @db.VarChar(255)
   imageAlt    String   @db.VarChar(255)
+  credits     Json     @default("[]")
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -227,6 +237,7 @@ model Ad {
   ctaHref   String   @db.VarChar(255) @default("/shop")
   ctaLabel  String   @db.VarChar(80) @default("Shop now")
   featured  Boolean  @default(false)
+  credits   Json     @default("[]")
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -237,7 +248,10 @@ model Payout {
   id        String   @id @default(cuid())
   brandId   String
   brand     Brand    @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  /** Net amount sent to the brand (MoMo / bank). */
   amount    Int
+  /** Flat withdrawal fee charged from brand earnings (RWF). */
+  feeAmount Int      @default(0)
   currency  String   @default("RWF") @db.VarChar(10)
   status    String   @default("pending") @db.VarChar(40)
   note      String?  @db.VarChar(500)
@@ -362,5 +376,26 @@ model OrderItem {
   brandId    String? @db.VarChar(80)
   brandName  String? @db.VarChar(160)
 
+  @@index([orderId])
+}
+
+/** XentriPay collection (MoMo / card) held until status is SUCCESS. */
+model PaymentSession {
+  id            String   @id @default(cuid())
+  customerRef   String   @unique @db.VarChar(80)
+  refid         String?  @unique @db.VarChar(80)
+  tid           String?  @db.VarChar(80)
+  status        String   @default("PENDING") @db.VarChar(20)
+  pmethod       String   @db.VarChar(20)
+  paymentMethod String   @db.VarChar(20)
+  amount        Int
+  currency      String   @default("RWF") @db.VarChar(10)
+  payload       Json
+  orderId       String?
+  errorMessage  String?  @db.VarChar(500)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
   @@index([orderId])
 }

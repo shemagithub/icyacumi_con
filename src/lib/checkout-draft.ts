@@ -62,20 +62,20 @@ export const PAYMENT_METHODS: Array<{
   {
     id: "mtn",
     label: "MTN MoMo",
-    description: "Pay with MTN Mobile Money. Approve the prompt on your phone.",
+    description: "Pay with MTN Mobile Money via XentriPay. Approve the prompt on your phone.",
     needsPhone: true,
   },
   {
     id: "airtel",
     label: "Airtel Money",
-    description: "Pay with Airtel Money. Approve the prompt on your phone.",
+    description: "Pay with Airtel Money via XentriPay. Approve the prompt on your phone.",
     needsPhone: true,
   },
   {
     id: "card",
     label: "Card",
-    description: "Visa, Mastercard, and other cards on a secure payment screen.",
-    needsPhone: false,
+    description: "Visa and Mastercard on XentriPay’s secure card page.",
+    needsPhone: true,
   },
 ];
 
@@ -102,6 +102,23 @@ export function readCheckoutDraft(): CheckoutDraft | null {
 export function clearCheckoutDraft() {
   if (typeof window === "undefined") return;
   sessionStorage.removeItem(CHECKOUT_DRAFT_KEY);
+}
+
+export const PAYMENT_REF_KEY = "bone-xentripay-ref";
+
+export function savePaymentRef(customerRef: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(PAYMENT_REF_KEY, customerRef);
+}
+
+export function readPaymentRef() {
+  if (typeof window === "undefined") return null;
+  return sessionStorage.getItem(PAYMENT_REF_KEY);
+}
+
+export function clearPaymentRef() {
+  if (typeof window === "undefined") return;
+  sessionStorage.removeItem(PAYMENT_REF_KEY);
 }
 
 export function paymentMethodLabel(id: PaymentMethodId | string) {

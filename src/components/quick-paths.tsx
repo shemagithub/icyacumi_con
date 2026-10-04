@@ -42,10 +42,10 @@ const PATHS: {
 export function QuickPaths() {
   return (
     <section className="quick-paths">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-col items-center gap-3 text-center md:flex-row md:items-end md:justify-between md:text-left">
         <div>
           <p className="eyebrow">Start here</p>
-          <h2 className="font-display mt-2 text-3xl tracking-[0.03em] lg:text-4xl">
+          <h2 className="font-display mt-2 text-[1.75rem] tracking-[0.03em] sm:text-3xl lg:text-4xl">
             What do you want?
           </h2>
         </div>

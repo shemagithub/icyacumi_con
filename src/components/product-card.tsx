@@ -34,6 +34,7 @@ export function ProductCard({
           fill
           sizes={CARD_SIZES}
           priority={priority}
+          quality={60}
           className="object-cover transition-transform duration-700 group-hover:scale-[1.04]"
         />
 
